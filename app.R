@@ -27,13 +27,18 @@ All_Detections_1 <- df_list$All_Detections
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
 
+#want to put this in the function when ready
+# Enc_release_data <- ENC_Release2_1 %>%
+#     mutate(Date = ifelse(str_detect(Date, "/"),
+#                          as.character(mdy(Date)),
+#                          Date))
                     
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
     # Application title
-    titlePanel("Old Faithful Geyser Data"),
+    titlePanel("WGFP Data Exploration"),
 
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
@@ -54,7 +59,11 @@ ui <- fluidPage(
             tabPanel("Biomark",
                      withSpinner(DT::dataTableOutput("biomark1"))),
             tabPanel("Mobile",
-                     withSpinner(DT::dataTableOutput("mobile1")))
+                     withSpinner(DT::dataTableOutput("mobile1"))),
+            tabPanel("All Detections",
+                     withSpinner(DT::dataTableOutput("alldetections1"))),
+            tabPanel("Encounter Release History",
+                     withSpinner(DT::dataTableOutput("enc_release1")))
             
             
         ), #end of tabset panel
@@ -66,30 +75,70 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
-    stationarycleandata <- reactive({
-        WGFP_Clean_1
-    })
+    #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
+    #i guess reactive ({}) makes it so you can make multiple expressions within a reactive contect whereas reactive() can only do 1
+    data_list <- reactive({
+        #making release data dates in same format
+        Enc_release_data <- df_list$ENC_Release2 %>%
+            mutate(Date = ifelse(str_detect(Date, "/"),
+                               as.character(mdy(Date)),
+                               Date))
+
+
+        
+        d_list <- list(
+            "stationarycleandata" = df_list$WGFP_Clean,
+            "biomarkdata" = Biomark,
+            "mobiledata" = Mobile,
+            "all_det_data" = df_list$All_Detections,
+            "enc_release_data" = Enc_release_data
+        )
+        
+        return(d_list)
+    }
+        
+        
+        
+    )
+    
+    # stationarycleandata <- reactive({
+    #     WGFP_Clean_1
+    # })
+    # 
+    # biomarkdata <- reactive({
+    #     Biomark
+    # })
+    # 
+    # mobiledata <- reactive({
+    #     Mobile
+    # })
 
     output$stationary1 <- renderDataTable({
         
-        stationarycleandata()
+        data_list()$stationarycleandata
     })
     
-    biomarkdata <- reactive({
-        Biomark
-    })
     
     output$biomark1 <- renderDataTable({
         
-        biomarkdata()
+        data_list()$biomarkdata
     })
     
-    mobiledata <- reactive({
-        Mobile
-    })
+    
     output$mobile1 <- renderDataTable({
         
-        mobiledata()
+        data_list()$mobiledata
+    })
+    
+    output$alldetections1 <- renderDataTable({
+        
+        data_list()$all_det_data
+    })
+    
+    
+    output$enc_release1 <- renderDataTable({
+        
+        data_list()$enc_release_data
     })
 }
 

@@ -115,15 +115,17 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   
   # Stationary Antennas
   StationaryEnc= WGFP_Clean %>%
-    dplyr::count(TAG,SCD, name = "Encounters")
+    count(TAG,SCD, name = "Encounters")
   
   # Mobile Antennas
   MobileEnc= Mobile %>%
-    dplyr::count(TAG,MobileAnt, name = "Encounters")
+    mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG)) %>%
+    count(TAG,MobileAnt, name = "Encounters")
   
   # Biomark Antennas
   BiomarkEnc <- biomark2 %>%
-    dplyr::count(TAG, Reader.ID, name = "Encounters")
+    mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG)) %>%
+    count(TAG, Reader.ID, name = "Encounters")
   
   ### Separate Encounter histories by Antenna ###
   Enc_RB1 = StationaryEnc%>%
@@ -236,6 +238,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   
   
   # Merge ENC_AllStationary with ENC_M1M2
+  # was getting dupicate tag numbers at the very end bc I wasn't stripping the 900 from the TAG at the very beginning of the fucntion for BIOmark and Mobile
+  # so it wasn't merging correctly. Then the 900 was stripped later but by then it didn't make a dif
   ENC_Stationary_M1M2= merge(ENC_ALLStationary,ENC_M1M2, all=TRUE)
   ENC_Stationary_M1M2[is.na(ENC_Stationary_M1M2)]=0
   
@@ -244,15 +248,6 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   ENC_ALL= merge(ENC_Stationary_M1M2,ENC_B1B2, all=TRUE)
   ENC_ALL[is.na(ENC_ALL)]=0
   
-  #take 900 out of tag
-  #need to have mutate "=" not "<-" or else colun name won't register well
-  #if the tag starts witj 900, take it out, if it doesn't start with 900, leave the tag as is
-  ENC_ALL <- ENC_ALL %>%
-    mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG))
-    
-    # mutate(TAG = case_when(str_detect(TAG, "^900") ~ str_sub(TAG, 4,-1),
-    #                        str_detect(TAG, "!^900") ~ TAG))
-             
   
   #### Merge Release data ###
   Release <- Release %>%

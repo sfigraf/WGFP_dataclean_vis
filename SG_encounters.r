@@ -63,7 +63,8 @@ unknown_tags_1 <-df_list$Unknown_Tags
 # ENC_Release2_2 <-  df_list$ENC_Release2
 # All_Detections_2 <- df_list$All_Detections
 # WGFP_Clean_2 <- df_list$WGFP_Clean
-
+x <- ENC_Release2_1 %>%
+  filter(TotalStationary >= 5)
 # x <- All_Detections_1 %>%
 #   select(-Scan_Time)
 # 

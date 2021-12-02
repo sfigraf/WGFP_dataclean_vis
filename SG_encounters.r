@@ -89,9 +89,11 @@ unknown_tags_2 <-df_list$Unknown_Tags
 # max(as.numeric(WGFP_Clean$NCD), na.rm = TRUE)
 # NCDlist <- unique(as.numeric(WGFP_Clean$NCD))
 # 
-# x <- WGFP_Clean %>%
-#   filter(TAG == 900230000228822)
-#   #filter(between(Scan_Date, "2020-10-16", "2021-04-04"))
+x <- WGFP_Clean %>%
+  # filter(TAG == 900230000228822)
+  filter(DTY >= as.Date("2020-12-03") & DTY <= as.Date("2021-04-15"))
+
+max(df_list$All_Detections$Scan_Date)
 # x <- Stationary %>%
 #   mutate(duplicated1 = duplicated(Stationary))
 # 

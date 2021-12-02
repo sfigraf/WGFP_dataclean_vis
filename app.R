@@ -43,12 +43,10 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
+            dateRangeInput("drangeinput1", "Select a Date Range:",
+                           start = "2020-09-03", 
+                           end = max(df_list$All_Detections$Scan_Date))
+        ), #end of sidebar panel
 
         # Show a plot of the generated distribution
         mainPanel(tabsetPanel(
@@ -69,7 +67,7 @@ ui <- fluidPage(
         ), #end of tabset panel
         
         ) #end of main panel
-    )
+    )#end of sidebarLayout
 )
 
 # Define server logic required to draw a histogram
@@ -78,7 +76,15 @@ server <- function(input, output) {
     #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
     #i guess reactive ({}) makes it so you can make multiple expressions within a reactive contect whereas reactive() can only do 1
     data_list <- reactive({
-        #making release data dates in same format
+        stationary_filtered <- df_list$WGFP_Clean %>%
+            filter(DTY >= input$drangeinput1[1] & DTY <= input$drangeinput1[2])
+        
+        
+        
+        
+        
+        #making release data dates in same format just for the sake of it
+        #should actually put this outside reactive context to make it 
         Enc_release_data <- df_list$ENC_Release2 %>%
             mutate(Date = ifelse(str_detect(Date, "/"),
                                as.character(mdy(Date)),
@@ -87,7 +93,7 @@ server <- function(input, output) {
 
         
         d_list <- list(
-            "stationarycleandata" = df_list$WGFP_Clean,
+            "stationarycleandata" = stationary_filtered,
             "biomarkdata" = Biomark,
             "mobiledata" = Mobile,
             "all_det_data" = df_list$All_Detections,

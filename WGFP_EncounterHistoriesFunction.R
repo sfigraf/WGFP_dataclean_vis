@@ -84,7 +84,9 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   
   Mobile_condensed <- Mobile %>%
     mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG),
-           MobileDate = as.character(mdy(MobileDate))) %>%
+           MobileDate = ifelse(str_detect(MobileDate, "/"), 
+                               as.character(mdy(MobileDate)), 
+                               MobileDate)) %>% #end of mutate
   
     # mutate(TAG = case_when(str_detect(TAG, "^900") ~ str_sub(TAG, 4,-1),
     #                        str_detect(TAG, "!^900") ~ TAG),

@@ -17,15 +17,21 @@ Mobile = read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release = read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",18)))
 
+Mobile <- Mobile %>%
+    mutate(MobileDate = as.character(mdy(MobileDate)))
 
 source("WGFP_EncounterHistoriesFunction.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark)
 
-ENC_Release2_1 <-  df_list$ENC_Release2
 All_Detections_1 <- df_list$All_Detections
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
+
+Enc_release_data <- df_list$ENC_Release2 %>%
+    mutate(Date = ifelse(str_detect(Date, "/"),
+                         as.character(mdy(Date)),
+                         Date))
 
 #want to put this in the function when ready
 # Enc_release_data <- ENC_Release2_1 %>%
@@ -45,7 +51,8 @@ ui <- fluidPage(
         sidebarPanel(
             dateRangeInput("drangeinput1", "Select a Date Range:",
                            start = "2020-09-03", 
-                           end = max(df_list$All_Detections$Scan_Date))
+                           end = max(df_list$All_Detections$Scan_Date)), #end of date range input
+            checkboxInput("checkbox1", "Remove Duplicate Days")
         ), #end of sidebar panel
 
         # Show a plot of the generated distribution
@@ -79,24 +86,37 @@ server <- function(input, output) {
         stationary_filtered <- df_list$WGFP_Clean %>%
             filter(DTY >= input$drangeinput1[1] & DTY <= input$drangeinput1[2])
         
+        biomark_filtered <- Biomark %>%
+            filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
         
+        mobile_filtered <- Mobile %>%
+            filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
         
+        all_det_filtered <- df_list$All_Detections %>%
+            filter(Scan_Date >= input$drangeinput1[1] & Scan_Date <= input$drangeinput1[2])
+        # error below solved because I wasn't using the correct variable names for each dataset
+        # x `Site_Code` not found in `.data`.
+        # x `Scan_Date` not found in `.data`    
+    if (input$checkbox1 == TRUE) {
+        stationary_filtered <- df_list$WGFP_Clean %>%
+            distinct(TAG, SCD, DTY, .keep_all = TRUE)
         
+        biomark_filtered <- Biomark %>%
+            distinct(DEC.Tag.ID, Reader.ID, Scan.Date, .keep_all = TRUE)
         
-        #making release data dates in same format just for the sake of it
-        #should actually put this outside reactive context to make it 
-        Enc_release_data <- df_list$ENC_Release2 %>%
-            mutate(Date = ifelse(str_detect(Date, "/"),
-                               as.character(mdy(Date)),
-                               Date))
-
-
+        mobile_filtered <- Mobile %>%
+            distinct(TAG, MobileAnt, MobileDate, .keep_all = TRUE)
         
+        all_det_filtered <- df_list$All_Detections %>%
+            distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE)
+        
+    }
+      
         d_list <- list(
             "stationarycleandata" = stationary_filtered,
-            "biomarkdata" = Biomark,
-            "mobiledata" = Mobile,
-            "all_det_data" = df_list$All_Detections,
+            "biomarkdata" = biomark_filtered,
+            "mobiledata" = mobile_filtered,
+            "all_det_data" = all_det_filtered,
             "enc_release_data" = Enc_release_data
         )
         

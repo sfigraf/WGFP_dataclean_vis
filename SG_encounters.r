@@ -169,7 +169,7 @@ All_detections <- df_list$All_Detections
 #ceiling rounds up to nearest integer larger than x. 
 #weeks_since_launch<- as.numeric(ceiling(difftime(max(x), min(x), units = "weeks")))
 ##Weeks
-All_detections <- All_detections %>%
+All_detections_05 <- All_detections %>%
   mutate(weeks_since = as.numeric(ceiling(difftime(Scan_Date, min(Scan_Date), units = "weeks")))
          )
 
@@ -187,6 +187,10 @@ All_detections_days1 <- All_detections_days %>%
   distinct(TAG, Site_Code, days_since, .keep_all = TRUE)
 
 test_days <- pivot_wider(data = All_detections_days1, id_cols = TAG, names_from = days_since, values_from = Site_Code)
+
+#just filtering days stuff
+x <- All_detections %>%
+  distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE)
 
 ### Getting times correct
 

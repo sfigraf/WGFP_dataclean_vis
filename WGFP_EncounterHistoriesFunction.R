@@ -1,8 +1,3 @@
-# title: WGFP: Clean detections and create encounter histories Function
-# Author: Matt Robinson
-# Date: Jan 10, 2020
-
-rm(list=ls())
 
 library(tidyverse)
 # Create Function

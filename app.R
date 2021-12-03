@@ -54,11 +54,23 @@ ui <- fluidPage(
             dateRangeInput("drangeinput1", "Select a Date Range:",
                            start = "2020-09-03", 
                            end = max(df_list$All_Detections$Scan_Date)), #end of date range input
-            checkboxGroupInput("checkboxgroup1", "Select Antennas", 
-                               choices = unique(df_list$All_Detections$Site_Code),
-                               selected = unique(df_list$All_Detections$Site_Code)),
-            actionLink("selectall","Select All"),
-            checkboxInput("checkbox1", "Remove Duplicate Days")
+            pickerInput(inputId = "picker1",
+                        label = "Select Antennas",
+                        choices = unique(df_list$All_Detections$Site_Code),
+                        selected = unique(df_list$All_Detections$Site_Code),
+                        multiple = TRUE,
+                        options = list(
+                            `actions-box` = TRUE
+                        ),
+                
+            ),
+            verbatimTextOutput("r1"),
+            # checkboxGroupInput("checkboxgroup1", "Select Antennas", 
+            #                    choices = unique(df_list$All_Detections$Site_Code),
+            #                    selected = unique(df_list$All_Detections$Site_Code)),
+            # actionLink("selectall","Select All"),
+            checkboxInput("checkbox1", "Remove Duplicate Days"),
+            submitButton("Update inputs", icon("refresh"))
         ), #end of sidebar panel
 
         # Show a plot of the generated distribution
@@ -87,18 +99,18 @@ ui <- fluidPage(
 #Warning: Error in validate_session_object: object 'session' not found solved by adding session to the part up here
 server <- function(input, output, session) {
     
-    observe({
-        if(input$selectall == 0) return(NULL) 
-        else if (input$selectall%%2 == 0)
-        {
-            updateCheckboxGroupInput(session,"checkboxgroup1","Select Antennas",choices=unique(df_list$All_Detections$Site_Code))
-        }
-        else
-        {
-            updateCheckboxGroupInput(session,"checkboxgroup1","Select Antennas",choices=unique(df_list$All_Detections$Site_Code),selected=unique(df_list$All_Detections$Site_Code))
-        }
-    })
-    
+    # observe({
+    #     if(input$selectall == 0) return(NULL) 
+    #     else if (input$selectall%%2 == 0)
+    #     {
+    #         updateCheckboxGroupInput(session,"checkboxgroup1","Select Antennas",choices=unique(df_list$All_Detections$Site_Code))
+    #     }
+    #     else
+    #     {
+    #         updateCheckboxGroupInput(session,"checkboxgroup1","Select Antennas",choices=unique(df_list$All_Detections$Site_Code),selected=unique(df_list$All_Detections$Site_Code))
+    #     }
+    # })
+    # 
     #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
     #i guess reactive ({}) makes it so you can make multiple expressions within a reactive contect whereas reactive() can only do 1
     data_list <- reactive({
@@ -115,7 +127,7 @@ server <- function(input, output, session) {
         
         all_det_filtered <- df_list$All_Detections %>%
             filter(Scan_Date >= input$drangeinput1[1] & Scan_Date <= input$drangeinput1[2],
-                   Site_Code %in% input$checkboxgroup1)
+                   Site_Code %in% input$picker1)
         # error below solved because I wasn't using the correct variable names for each dataset
         # x `Site_Code` not found in `.data`.
         # x `Scan_Date` not found in `.data` 

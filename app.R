@@ -10,7 +10,7 @@
 library(shiny)
 library(shinycssloaders)
 library(DT)
-library(shinyWidgets)
+library(shinyWidgets) # for pickerinput
 
 
 Stationary = read.csv(paste0("WGFP_Raw_20211130.csv"))
@@ -50,7 +50,7 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
-            textInput("textinput1", "Filter by Tag"),
+            #textInput("textinput1", "Filter by Tag"),
             dateRangeInput("drangeinput1", "Select a Date Range:",
                            start = "2020-09-03", 
                            end = max(df_list$All_Detections$Scan_Date)), #end of date range input
@@ -64,16 +64,13 @@ ui <- fluidPage(
                         ),
                 
             ),
-            verbatimTextOutput("r1"),
-            # checkboxGroupInput("checkboxgroup1", "Select Antennas", 
-            #                    choices = unique(df_list$All_Detections$Site_Code),
-            #                    selected = unique(df_list$All_Detections$Site_Code)),
-            # actionLink("selectall","Select All"),
-            checkboxInput("checkbox1", "Remove Duplicate Days"),
-            submitButton("Update inputs", icon("refresh"))
+            
+            checkboxInput("checkbox1", "Remove Duplicate Days: currently doesn't work with other filters"),
+            #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
+            submitButton("Update inputs", icon("sync"))
         ), #end of sidebar panel
 
-        # Show a plot of the generated distribution
+        #
         mainPanel(tabsetPanel(
             tabPanel("How to Use",
                      includeHTML(paste0("www/", "WGFP_dataclean_vis_about.html"))),
@@ -99,24 +96,12 @@ ui <- fluidPage(
 #Warning: Error in validate_session_object: object 'session' not found solved by adding session to the part up here
 server <- function(input, output, session) {
     
-    # observe({
-    #     if(input$selectall == 0) return(NULL) 
-    #     else if (input$selectall%%2 == 0)
-    #     {
-    #         updateCheckboxGroupInput(session,"checkboxgroup1","Select Antennas",choices=unique(df_list$All_Detections$Site_Code))
-    #     }
-    #     else
-    #     {
-    #         updateCheckboxGroupInput(session,"checkboxgroup1","Select Antennas",choices=unique(df_list$All_Detections$Site_Code),selected=unique(df_list$All_Detections$Site_Code))
-    #     }
-    # })
-    # 
     #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
     #i guess reactive ({}) makes it so you can make multiple expressions within a reactive contect whereas reactive() can only do 1
     data_list <- reactive({
         stationary_filtered <- df_list$WGFP_Clean %>%
-            filter(DTY >= input$drangeinput1[1] & DTY <= input$drangeinput1[2],
-                   TAG == input$textinput1
+            filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
+                   #TAG == input$textinput1 #not gonna do tag filtering for now
                    )
         
         biomark_filtered <- Biomark %>%
@@ -135,16 +120,25 @@ server <- function(input, output, session) {
         # this part doesn't work because if the box is checked, the rest of the filters don't apply
     if (input$checkbox1 == TRUE) {
         stationary_filtered <- df_list$WGFP_Clean %>%
-            distinct(TAG, SCD, DTY, .keep_all = TRUE)
+            distinct(TAG, SCD, DTY, .keep_all = TRUE) %>%
+            filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
+                   #TAG == input$textinput1 #not gonna do tag filtering for now
+            )
         
         biomark_filtered <- Biomark %>%
-            distinct(DEC.Tag.ID, Reader.ID, Scan.Date, .keep_all = TRUE)
+            distinct(DEC.Tag.ID, Reader.ID, Scan.Date, .keep_all = TRUE) %>%
+            filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
         
         mobile_filtered <- Mobile %>%
-            distinct(TAG, MobileAnt, MobileDate, .keep_all = TRUE)
+            distinct(TAG, MobileAnt, MobileDate, .keep_all = TRUE) %>%
+            filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
+        
         
         all_det_filtered <- df_list$All_Detections %>%
-            distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE)
+            distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
+            filter(Scan_Date >= input$drangeinput1[1] & Scan_Date <= input$drangeinput1[2],
+                   Site_Code %in% input$picker1)
+        
         
     }
       

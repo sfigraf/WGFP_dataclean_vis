@@ -91,7 +91,8 @@ unknown_tags_2 <-df_list$Unknown_Tags
 # 
 x <- WGFP_Clean %>%
   # filter(TAG == 900230000228822)
-  filter(DTY >= as.Date("2020-12-03") & DTY <= as.Date("2021-04-15"))
+  filter(DTY >= as.Date("2020-12-03") & DTY <= as.Date("2021-08-15"),
+         TAG == "230000228929")
 
 max(df_list$All_Detections$Scan_Date)
 # x <- Stationary %>%

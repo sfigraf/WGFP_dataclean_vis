@@ -96,6 +96,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   
   WG_bio <- bind_rows(WGFP_condensed,Biomark_condensed)
   All_detections <- bind_rows(WG_bio, Mobile_condensed)
+  All_detections <- All_detections %>%
+    filter(Scan_Date >= as.Date("2020-08-06")) #right before the first date of marker tag detections on stationary antennas
   
   #cleaning timestamps if need be
   if (    length(unique( str_detect(All_detections$Scan_Time, "PM|AM"))) > 1) {

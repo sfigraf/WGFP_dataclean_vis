@@ -1,17 +1,11 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
 library(shinycssloaders)
 library(DT)
 library(shinyWidgets) # for pickerinput
 
+#Biomark is temporarily labelled as B3 and B4 to make data filtering easier
+# tieh the site_code %in% picker1 line, because B1 and B2 are technically "in" RB1 and Rb2, it would include them to be part of it 
+# so for now this is easier
 
 Stationary = read.csv(paste0("WGFP_Raw_20211130.csv"))
 Mobile = read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
@@ -65,7 +59,7 @@ ui <- fluidPage(
                 
             ),
             
-            checkboxInput("checkbox1", "Remove Duplicate Days: currently doesn't work with other filters"),
+            checkboxInput("checkbox1", "Remove Duplicate Days"),
             #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
             submitButton("Update inputs", icon("sync"))
         ), #end of sidebar panel
@@ -112,7 +106,9 @@ server <- function(input, output, session) {
         
         all_det_filtered <- df_list$All_Detections %>%
             filter(Scan_Date >= input$drangeinput1[1] & Scan_Date <= input$drangeinput1[2],
-                   Site_Code %in% input$picker1)
+                   Site_Code %in% input$picker1
+                   
+                   )
         # error below solved because I wasn't using the correct variable names for each dataset
         # x `Site_Code` not found in `.data`.
         # x `Scan_Date` not found in `.data` 

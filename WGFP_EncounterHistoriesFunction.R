@@ -52,8 +52,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   # biomark cleaning, getting dates into uniform format, 
   biomark2 <- Biomark %>%
     mutate(TAG = str_replace(DEC.Tag.ID, "\\.", ""),
-           Reader.ID = case_when(Reader.ID == "A1" ~ "B1",
-                                 Reader.ID == "A2" ~ "B2",
+           Reader.ID = case_when(Reader.ID == "A1" ~ "B3",
+                                 Reader.ID == "A2" ~ "B4",
                                  str_detect(Reader.ID, "A1|A2") == FALSE ~ Reader.ID),
            #make a column for Scan>Date if parentheses are detected in the string, that means the format is in mdy 
            # and we want to convert it to YYYYMMDD format. elsewise, leave it as is
@@ -65,10 +65,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
     
     # from gis: B1 416127.3, 4440146
     #B2: 420727.9, 4437221
-    mutate(UTM_X =case_when(Reader.ID == "B1" ~ "416127.3",
-                            Reader.ID == "B2" ~ "420727.9"),
-           UTM_Y = case_when(Reader.ID == "B1" ~ "4440146",
-                             Reader.ID == "B2" ~ "4437221")) %>%
+    mutate(UTM_X =case_when(Reader.ID == "B3" ~ "416127.3",
+                            Reader.ID == "B4" ~ "420727.9"),
+           UTM_Y = case_when(Reader.ID == "B3" ~ "4440146",
+                             Reader.ID == "B4" ~ "4437221")) %>%
     distinct()
   
   ###Create one big clean dataset
@@ -165,10 +165,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   sum(Mob_M2$Encounters)
   
   Bio_B1 <- BiomarkEnc %>%
-    filter(Reader.ID == "B1")
+    filter(Reader.ID == "B3")
   
   Bio_B2 <- BiomarkEnc %>%
-    filter(Reader.ID == "B2")
+    filter(Reader.ID == "B4")
   # Make Individual Encounter tables
   
   RB1=Enc_RB1 %>%

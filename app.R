@@ -75,6 +75,17 @@ ui <- fluidPage(
                         
             ), #end of picker input
             
+            # pickerInput(inputId = "picker3",
+            #             label = "Select Distinct() Fields:",
+            #             choices = colnames(df_list$All_Detections),
+            #             #selected = unique(df_list$ENC_Release2$Species),
+            #             multiple = TRUE,
+            #             options = list(
+            #               `actions-box` = TRUE #this makes the "select/deselect all" option
+            #             ),
+            #             
+            # ), #end of picker input
+            
             checkboxInput("checkbox1", "Remove Duplicate Days"),
             #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
             submitButton("Update inputs", icon("sync"))
@@ -122,8 +133,10 @@ server <- function(input, output, session) {
             filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
         
         all_det_filtered <- df_list$All_Detections %>%
+          #distinct(c(input$picker3)) %>%
             filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
-                   Site_Code %in% input$picker1
+                   Site_Code %in% input$picker1,
+                   Species %in% input$picker2
                    ) %>%
           select(-Scan_Date)
         
@@ -154,12 +167,23 @@ server <- function(input, output, session) {
         all_det_filtered <- df_list$All_Detections %>%
             distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
             filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
-                   Site_Code %in% input$picker1) %>%
+                   Site_Code %in% input$picker1,
+                   Species %in% input$picker2) %>%
           select(-Scan_DateTime)
         
         
     }
-      
+        #need new selective picker to select what to do distinct() on
+        
+        
+        # if (input$checkbox2 == TRUE) {
+        #   all_det_filtered <- df_list$All_Detections %>%
+        #     distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
+        #     filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
+        #            Site_Code %in% input$picker1,
+        #            Species %in% input$picker2)
+        # }
+        # 
         d_list <- list(
             "stationarycleandata" = stationary_filtered,
             "biomarkdata" = biomark_filtered,
@@ -262,7 +286,7 @@ server <- function(input, output, session) {
         filter = 'top',
         options = list(
           pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again #errorin list: arg 5 is empty because I had a comma after the dom argument so it thought there was gonna be another argument input
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
     )

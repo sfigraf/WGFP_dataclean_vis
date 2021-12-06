@@ -115,6 +115,16 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
     rename(Scan_DateTime = datetime2) %>%
     select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
   
+  Release1 <- Release %>%
+    rename(TAG = TagID)
+  
+  All_Detections_2 <- left_join(All_detections, Release1, by = "TAG")
+  All_Detections_3 <- All_Detections_2 %>%
+    select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X.x, UTM_Y.x, ReleaseSite, Species, Length, Weight ) %>%
+    rename(UTM_X = UTM_X.x,
+           UTM_Y = UTM_Y.x)
+    
+  
   ### Create Encounter Histories ###
   
   # Gives # of encounters of each tag per antenna
@@ -312,7 +322,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   # #setwd("U:\\Projects\\Colorado_River\\Windy_Gap_FishMovementStudy\\Data\\RFID\\Detections\\CodingDetections")
   # 
   # save("WGFP_Encounter_FUN", file="WGFP_Encounters_Function.Rdata")
-  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_detections, "Unknown_Tags" = unknown_tags)
+  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_Detections_3, "Unknown_Tags" = unknown_tags)
   return(df_list)
 }
   

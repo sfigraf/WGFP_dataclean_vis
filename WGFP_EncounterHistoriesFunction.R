@@ -18,18 +18,18 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   
   ### Getting times to same format if needed
   #
-  if (    length(unique( str_detect(Stationary$ARR, "PM|AM"))) > 1) {
-    WGFP_Clean <- WGFP_Clean %>%
-      mutate(ARR1 = case_when(str_detect(ARR, "AM") ~ hms(ARR) ,
-                              str_detect(ARR, "PM") ~ hms(ARR) + hours(12),
-                              #if it doesn't detect PM or AM just do hms(ARR)
-                              str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR))
-      ) %>%
-      mutate(ARR2 = as.character(as_datetime(ARR1)), 
-             ARR3 = str_sub(ARR2, start = 11, end = -1)) %>%
-      select(Code, DTY, ARR3,  TRF,  DUR,  TTY,  TAG,  SCD,  ANT,  NCD,  EFA ) %>%
-      rename(ARR = ARR3)
-  }
+  # if (    length(unique( str_detect(Stationary$ARR, "PM|AM"))) > 1) {
+  #   WGFP_Clean <- WGFP_Clean %>%
+  #     mutate(ARR1 = case_when(str_detect(ARR, "AM") ~ hms(ARR) ,
+  #                             str_detect(ARR, "PM") ~ hms(ARR) + hours(12),
+  #                             #if it doesn't detect PM or AM just do hms(ARR)
+  #                             str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR))
+  #     ) %>%
+  #     mutate(ARR2 = as.character(as_datetime(ARR1)), 
+  #            ARR3 = str_sub(ARR2, start = 11, end = -1)) %>%
+  #     select(Code, DTY, ARR3,  TRF,  DUR,  TTY,  TAG,  SCD,  ANT,  NCD,  EFA ) %>%
+  #     rename(ARR = ARR3)
+  # }
   
   
   #### Add Lat Longs to detections ###
@@ -87,19 +87,13 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
            MobileDate = ifelse(str_detect(MobileDate, "/"), 
                                as.character(mdy(MobileDate)), 
                                MobileDate)) %>% #end of mutate
-  
-    # mutate(TAG = case_when(str_detect(TAG, "^900") ~ str_sub(TAG, 4,-1),
-    #                        str_detect(TAG, "!^900") ~ TAG),
-    #         %>%
     select(MobileDate, MobileTime, TAG, MobileAnt, MobileUTM_X, MobileUTM_Y) %>%
     rename(Scan_Date = MobileDate, Scan_Time = MobileTime, Site_Code = MobileAnt, UTM_X = MobileUTM_X, UTM_Y = MobileUTM_Y)
   
   WG_bio <- bind_rows(WGFP_condensed,Biomark_condensed)
   All_detections <- bind_rows(WG_bio, Mobile_condensed)
-  All_detections <- All_detections %>%
-    filter(Scan_Date >= as.Date("2020-08-06")) #right before the first date of marker tag detections on stationary antennas
   
-  #cleaning timestamps if need be
+  #cleaning timestamps for mobile and old stationary detections mainly
   if (    length(unique( str_detect(All_detections$Scan_Time, "PM|AM"))) > 1) {
     All_detections <- All_detections %>%
       mutate(Scan_Time1 = case_when(str_detect(Scan_Time, "AM") ~ hms(Scan_Time) ,
@@ -112,6 +106,14 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
       select(Scan_Date, Scan_Time3, TAG, Site_Code, UTM_X, UTM_Y ) %>%
       rename(Scan_Time = Scan_Time3)
   }
+  
+  All_detections <- All_detections %>%
+    filter(Scan_Date >= as.Date("2020-08-06")) %>% #right before the first date of marker tag detections on stationary antennas
+    mutate(
+      #datetime1 = as.POSIXct(paste(Scan_Date, Scan_Time),format="%Y-%m-%d %H:%M:%S"),
+           datetime2 = ymd_hms(paste(Scan_Date, Scan_Time))) %>%
+    rename(Scan_DateTime = datetime2) %>%
+    select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
   
   ### Create Encounter Histories ###
   
@@ -242,7 +244,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   
   
   # Merge ENC_AllStationary with ENC_M1M2
-  # was getting dupicate tag numbers at the very end bc I wasn't stripping the 900 from the TAG at the very beginning of the fucntion for BIOmark and Mobile
+  # was getting dupicate tag numbers at the very end bc I wasn't stripping the 900 from the TAG at the very beginning of the function for BIOmark and Mobile
   # so it wasn't merging correctly. Then the 900 was stripped later but by then it didn't make a dif
   ENC_Stationary_M1M2= merge(ENC_ALLStationary,ENC_M1M2, all=TRUE)
   ENC_Stationary_M1M2[is.na(ENC_Stationary_M1M2)]=0

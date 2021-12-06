@@ -174,7 +174,44 @@ All_detections_05 <- All_detections %>%
   mutate(weeks_since = as.numeric(ceiling(difftime(Scan_Date, min(Scan_Date), units = "weeks")))
          )
 
-All_detections1 <- All_detections %>%
+#unique tags by site and Day
+
+
+spc_enc_only <- Enc_release_data %>%
+  select(Species, Length, Weight, TAG)
+
+detections_and_species <- left_join(All_detections_05, spc_enc_only, by = "TAG")
+
+detections_and_species %>%
+  count(Site_Code, Species, weeks_since) %>%
+  ggplot(aes(x = weeks_since, y = n, fill = Site_Code)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  labs(title = "Weekly detections by Site")
+
+detections_and_species %>%
+  count(Site_Code, Species) %>%
+  ggplot(aes(x = Species, y = n, fill = Site_Code)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme_classic() +
+  labs(title = "Raw Number of detections by Species and Site")
+
+detections_and_species %>%
+  distinct(TAG, Site_Code, .keep_all = TRUE) %>%
+  count(Site_Code,Species) %>%
+  ggplot(aes(x = Site_Code, y = n, fill = Species)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  labs(title = "Species Detections by Site, Controlled by Day", subtitle = "A fish with a million detections on one day only registers once") +
+  ylab("Number of Unique Days") +
+  xlab("Site")
+
+###Weeks since datawrangling
+All_detections_05 <- All_detections %>%
+  mutate(weeks_since = as.numeric(ceiling(difftime(Scan_Date, min(Scan_Date), units = "weeks")))
+  )
+
+All_detections1 <- All_detections_05 %>%
   distinct(TAG, Site_Code, weeks_since, .keep_all = TRUE)
 
 test_weeks <- pivot_wider(data = All_detections1, id_cols = TAG, names_from = weeks_since, values_from = Site_Code)
@@ -301,3 +338,7 @@ length(y) >1
 Release1 <- Release %>%
   rename(TAG = TagID)
 x <- anti_join(ENC_Release2_1, Release1, by = "TAG")
+
+All_Detections_1 %>%
+  filter(DTY >= "2020-12-03" & DTY <= "2021-04-15")
+         

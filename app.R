@@ -1,5 +1,7 @@
 library(shiny)
 library(shinycssloaders)
+library(tidyverse) #error has occ
+library(lubridate)
 library(DT)
 library(shinyWidgets) # for pickerinput
 
@@ -7,10 +9,13 @@ library(shinyWidgets) # for pickerinput
 # tieh the site_code %in% picker1 line, because B1 and B2 are technically "in" RB1 and Rb2, it would include them to be part of it 
 # so for now this is easier
 
-Stationary = read.csv(paste0("WGFP_Raw_20211130.csv"))
-Mobile = read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
+# rsconnect::showLogs(appName="WGFP_dataclean_vis",streaming=TRUE) will show logs when trying to load app browser
+# had "application failed to start" error and fixed both times with above command. both times because packages in local environment (tidyverse and lubridate) weren't called with library() command 
+# runs slow right now anyway. might be worth putting at least release data outside reactive context
+Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
+Mobile <- read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
-Release = read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",18)))
+Release <- read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
 
 Mobile <- Mobile %>%
     mutate(MobileDate = as.character(mdy(MobileDate)))
@@ -47,17 +52,28 @@ ui <- fluidPage(
             #textInput("textinput1", "Filter by Tag"),
             dateRangeInput("drangeinput1", "Select a Date Range:",
                            start = "2020-09-03", 
-                           end = max(df_list$All_Detections$Scan_Date)), #end of date range input
+                           end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
             pickerInput(inputId = "picker1",
                         label = "Select Antennas",
                         choices = unique(df_list$All_Detections$Site_Code),
                         selected = unique(df_list$All_Detections$Site_Code),
                         multiple = TRUE,
                         options = list(
-                            `actions-box` = TRUE
+                            `actions-box` = TRUE #this makes the "select/deselect all" option
                         ),
                 
-            ),
+            ), #end of picker input
+            
+            pickerInput(inputId = "picker2",
+                        label = "Select Fish Species:",
+                        choices = unique(df_list$ENC_Release2$Species),
+                        selected = unique(df_list$ENC_Release2$Species),
+                        multiple = TRUE,
+                        options = list(
+                            `actions-box` = TRUE #this makes the "select/deselect all" option
+                        ),
+                        
+            ), #end of picker input
             
             checkboxInput("checkbox1", "Remove Duplicate Days"),
             #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
@@ -87,7 +103,7 @@ ui <- fluidPage(
 )
 
 # Define server logic
-#Warning: Error in validate_session_object: object 'session' not found solved by adding session to the part up here
+# Warning: Error in validate_session_object: object 'session' not found solved by adding session to the part up here
 server <- function(input, output, session) {
     
     #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
@@ -98,6 +114,7 @@ server <- function(input, output, session) {
                    #TAG == input$textinput1 #not gonna do tag filtering for now
                    )
         
+        
         biomark_filtered <- Biomark %>%
             filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
         
@@ -105,10 +122,14 @@ server <- function(input, output, session) {
             filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
         
         all_det_filtered <- df_list$All_Detections %>%
-            filter(Scan_Date >= input$drangeinput1[1] & Scan_Date <= input$drangeinput1[2],
+            filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
                    Site_Code %in% input$picker1
-                   
-                   )
+                   ) %>%
+          select(-Scan_Date)
+        
+        Enc_release_data_filtered <- df_list$ENC_Release2 %>%
+            filter(Species %in% input$picker2)
+        
         # error below solved because I wasn't using the correct variable names for each dataset
         # x `Site_Code` not found in `.data`.
         # x `Scan_Date` not found in `.data` 
@@ -132,8 +153,9 @@ server <- function(input, output, session) {
         
         all_det_filtered <- df_list$All_Detections %>%
             distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
-            filter(Scan_Date >= input$drangeinput1[1] & Scan_Date <= input$drangeinput1[2],
-                   Site_Code %in% input$picker1)
+            filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
+                   Site_Code %in% input$picker1) %>%
+          select(-Scan_DateTime)
         
         
     }
@@ -143,7 +165,7 @@ server <- function(input, output, session) {
             "biomarkdata" = biomark_filtered,
             "mobiledata" = mobile_filtered,
             "all_det_data" = all_det_filtered,
-            "enc_release_data" = Enc_release_data
+            "enc_release_data" = Enc_release_data_filtered
         )
         
         return(d_list)
@@ -164,34 +186,86 @@ server <- function(input, output, session) {
     # mobiledata <- reactive({
     #     Mobile
     # })
+    
 
-    output$stationary1 <- renderDataTable({
+# Datatable renders -------------------------------------------------------
+
+    
+    output$stationary1 <- DT::renderDataTable(
         
-        data_list()$stationarycleandata
-    })
-    
-    
-    output$biomark1 <- renderDataTable({
+      
+        data_list()$stationarycleandata,
+        rownames = FALSE,
+        #extensions = c('Buttons'),
+        #for slider filter instead of text input
+        filter = 'top',
+        options = list(
+          pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+        )
         
-        data_list()$biomarkdata
-    })
+    )
     
     
-    output$mobile1 <- renderDataTable({
+    output$biomark1 <- renderDataTable(
         
-        data_list()$mobiledata
-    })
+        data_list()$biomarkdata,
+        rownames = FALSE,
+        #extensions = c('Buttons'),
+        #for slider filter instead of text input
+        filter = 'top',
+        options = list(
+          pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+        )
+    )
     
-    output$alldetections1 <- renderDataTable({
+    
+    output$mobile1 <- renderDataTable(
         
-        data_list()$all_det_data
-    })
+        data_list()$mobiledata,
+        rownames = FALSE,
+        #extensions = c('Buttons'),
+        #for slider filter instead of text input
+        filter = 'top',
+        options = list(
+          pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+        )
+    )
     
-    
-    output$enc_release1 <- renderDataTable({
+    # Dt 
+    output$alldetections1 <- renderDataTable(
         
-        data_list()$enc_release_data
-    })
+        data_list()$all_det_data,
+        rownames = FALSE,
+        #extensions = c('Buttons'),
+        #for slider filter instead of text input
+        filter = 'top',
+        options = list(
+          pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+        )
+    )
+    
+    
+    output$enc_release1 <- renderDataTable(
+        
+        data_list()$enc_release_data,
+        rownames = FALSE,
+        #extensions = c('Buttons'),
+        #for slider filter instead of text input
+        filter = 'top',
+        options = list(
+          pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+        )
+    )
 }
 
 # Run the application 

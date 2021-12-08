@@ -18,7 +18,7 @@ library(bslib)
 
 
 
-Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
+Stationary <- read.csv(paste0("WGFP_Raw_20211130_1.csv"))
 Mobile <- read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
@@ -83,7 +83,7 @@ ui <- fluidPage(
                           dateRangeInput("drangeinput1", "Select a Date Range:",
                                          start = "2020-09-03", 
                                          end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
-                          actionButton("button1", label = "Submit")
+                          actionButton("button1", label = "Render Table")
                           ),
                        
                       mainPanel(tabsetPanel(
@@ -141,10 +141,10 @@ ui <- fluidPage(
                                       multiple = TRUE,
                                       options = list(
                                         `actions-box` = TRUE #this makes the "select/deselect all" option
-                                      ),
-                                      choicesOpt = list(
-                                        style = rep(("color: black; background: lightgrey; font-weight: bold;"),10)
-                                      ) #end of choices opt
+                                      )
+                                      # choicesOpt = list(
+                                      #   style = rep(("color: black; background: lightgrey; font-weight: bold;"),10)
+                                      # ) #end of choices opt
                                       
                           ), #end of picker 3 input
                           
@@ -152,7 +152,7 @@ ui <- fluidPage(
                           checkboxInput("checkbox2", "Remove Duplicate TAGs"),
                           #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
                           #submitButton("Update inputs", icon("sync"))
-                          actionButton("button2", label = "Submit")
+                          actionButton("button2", label = "Render Table")
                         ), #end of sidebar 
                         mainPanel(tabsetPanel(
                           tabPanel("All Detections",
@@ -197,8 +197,7 @@ server <- function(input, output, session) {
         "stationarycleandata" = stationary_filtered,
         "biomarkdata" = biomark_filtered,
         "mobiledata" = mobile_filtered
-        # "all_det_data" = all_det_filtered,
-        # "enc_release_data" = Enc_release_data_filtered
+        
       )
       
       return(indiv_d_list)
@@ -212,19 +211,10 @@ server <- function(input, output, session) {
     
     #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
     #i guess reactive ({}) makes it so you can make multiple expressions within a reactive context whereas reactive() can only do 1
-    data_list <- eventReactive(input$button2,{
-        # stationary_filtered <- df_list$WGFP_Clean %>%
-        #     filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
-        #            #TAG == input$textinput1 #not gonna do tag filtering for now
-        #            )
+    enc_hist_data_list <- eventReactive(input$button2,{
         
-        
-        # biomark_filtered <- Biomark %>%
-        #     filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
-        # 
-        # mobile_filtered <- Mobile %>%
-        #     filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
-        
+      
+      
         all_det_filtered <- df_list$All_Detections %>%
             #unique(mtcars[,input$choose_columns])distinct(c(input$picker3)) %>%
             filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
@@ -243,20 +233,6 @@ server <- function(input, output, session) {
       ### Filtering for TAG, SIte Code, and Day  
         
     if (input$checkbox1 == TRUE & input$checkbox2 == FALSE) {
-        # stationary_filtered <- df_list$WGFP_Clean %>%
-        #     distinct(TAG, SCD, DTY, .keep_all = TRUE) %>%
-        #     filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
-        #            #TAG == input$textinput1 #not gonna do tag filtering for now
-        #     )
-        # 
-        # biomark_filtered <- Biomark %>%
-        #     distinct(DEC.Tag.ID, Reader.ID, Scan.Date, .keep_all = TRUE) %>%
-        #     filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
-        # 
-        # mobile_filtered <- Mobile %>%
-        #     distinct(TAG, MobileAnt, MobileDate, .keep_all = TRUE) %>%
-        #     filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
-        # 
         
         all_det_filtered <- df_list$All_Detections %>%
             distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
@@ -282,32 +258,18 @@ server <- function(input, output, session) {
             select(-Scan_Date)
         }
 
-        d_list <- list(
-            # "stationarycleandata" = stationary_filtered,
-            # "biomarkdata" = biomark_filtered,
-            # "mobiledata" = mobile_filtered,
+        enc_hist_d_list <- list(
             "all_det_data" = all_det_filtered,
             "enc_release_data" = Enc_release_data_filtered
         )
         
-        return(d_list)
+        return(enc_hist_d_list)
     }
         
         
         
     )
     
-    # stationarycleandata <- reactive({
-    #     WGFP_Clean_1
-    # })
-    # 
-    # biomarkdata <- reactive({
-    #     Biomark
-    # })
-    # 
-    # mobiledata <- reactive({
-    #     Mobile
-    # })
     
 
 # Datatable renders -------------------------------------------------------
@@ -323,7 +285,8 @@ server <- function(input, output, session) {
         filter = 'top',
         options = list(
           pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+          language = list(emptyTable = "Enter inputs and press Render Table")
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
         
@@ -339,7 +302,9 @@ server <- function(input, output, session) {
         filter = 'top',
         options = list(
           pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+          language = list(emptyTable = "Enter inputs and press Render Table")
+          
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
     )
@@ -354,22 +319,27 @@ server <- function(input, output, session) {
         filter = 'top',
         options = list(
           pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+          language = list(emptyTable = "Enter inputs and press Render Table")
+          
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
     )
     
     # Dt 
     output$alldetections1 <- renderDataTable(
-        
-        data_list()$all_det_data,
+      
+      enc_hist_data_list()$all_det_data,
         rownames = FALSE,
         #extensions = c('Buttons'),
         #for slider filter instead of text input
         filter = 'top',
         options = list(
           pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again
+          
+          dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+          language = list(emptyTable = "Enter inputs and press Render Table")
+          
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
     )
@@ -377,14 +347,16 @@ server <- function(input, output, session) {
     
     output$enc_release1 <- renderDataTable(
         
-        data_list()$enc_release_data,
+      enc_hist_data_list()$enc_release_data,
         rownames = FALSE,
         #extensions = c('Buttons'),
         #for slider filter instead of text input
         filter = 'top',
         options = list(
           pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-          dom = 'Blfrtip' #had to add 'lowercase L' letter to display the page length again #errorin list: arg 5 is empty because I had a comma after the dom argument so it thought there was gonna be another argument input
+          dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again #errorin list: arg 5 is empty because I had a comma after the dom argument so it thought there was gonna be another argument input
+          language = list(emptyTable = "Enter inputs and press Render Table")
+          
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
     )

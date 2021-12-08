@@ -9,10 +9,15 @@ library(bslib)
 #Biomark is temporarily labelled as B3 and B4 to make data filtering easier
 # tieh the site_code %in% picker1 line, because B1 and B2 are technically "in" RB1 and Rb2, it would include them to be part of it 
 # so for now this is easier
-
+# cntrl + shft + A to reformat chunks of code
 # rsconnect::showLogs(appName="WGFP_dataclean_vis",streaming=TRUE) will show logs when trying to load app browser
 # had "application failed to start" error and fixed both times with above command. both times because packages in local environment (tidyverse and lubridate) weren't called with library() command 
 # runs slow right now anyway. might be worth putting at least release data outside reactive context
+
+# Data Read Ins -----------------------------------------------------------
+
+
+
 Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
 Mobile <- read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
@@ -44,6 +49,7 @@ Enc_release_data <- df_list$ENC_Release2 %>%
 rainbow_trout_pallette <- list(pink1 = "#E3BABBFF", olive_green1 = "#C4CFBFFF", dark_olive_green1 = "#81754EFF",
                                mustard_yellow1 = "#CBA660FF", brown_yellow = "#86551CFF" )
 # Define UI for application that draws a histogram
+
 ui <- fluidPage(
   
   navbarPage(title = "WGFP Data Exploration",
@@ -66,9 +72,19 @@ ui <- fluidPage(
              tabPanel("About/How to Use",
                       includeHTML(paste0("www/", "WGFP_dataclean_vis_about.html"))
                       ), #end fo how to use TabPanel
+             
+
+# Individual Datsets UI ---------------------------------------------------
+
+             
              tabPanel("Individual Datasets",
                       sidebarLayout(
-                        sidebarPanel(),
+                        sidebarPanel(
+                          dateRangeInput("drangeinput1", "Select a Date Range:",
+                                         start = "2020-09-03", 
+                                         end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
+                          actionButton("button1", label = "Submit")
+                          ),
                        
                       mainPanel(tabsetPanel(
                         tabPanel("Stationary Clean",
@@ -85,12 +101,15 @@ ui <- fluidPage(
                     ),#end of Individual data tab panel
              
              # new Tab "Encounter Histories"
+
+# Encounter Histories UI --------------------------------------------------
+
              
              tabPanel("Encounter Histories",
                       sidebarLayout(
                         sidebarPanel(
                           #textInput("textinput1", "Filter by Tag"),
-                          dateRangeInput("drangeinput1", "Select a Date Range:",
+                          dateRangeInput("drangeinput2", "Select a Date Range:",
                                          start = "2020-09-03", 
                                          end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
                           pickerInput(inputId = "picker1",
@@ -132,7 +151,8 @@ ui <- fluidPage(
                           checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
                           checkboxInput("checkbox2", "Remove Duplicate TAGs"),
                           #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
-                          submitButton("Update inputs", icon("sync"))
+                          #submitButton("Update inputs", icon("sync"))
+                          actionButton("button2", label = "Submit")
                         ), #end of sidebar 
                         mainPanel(tabsetPanel(
                           tabPanel("All Detections",
@@ -141,111 +161,73 @@ ui <- fluidPage(
                                    withSpinner(DT::dataTableOutput("enc_release1")))
                           
                           
-                            )#end of encounter histories tabset panel within mainPanel
-                          )#end of mainPanel
-                          
-                        ) #end of Encounter histories sidebar layout
+                          )#end of encounter histories tabset panel within mainPanel
+                        )#end of mainPanel
+                        
+                      ) #end of Encounter histories sidebar layout
                       
-                      ) #end of Encounter Histories Tab
-             ) #end of navbar page; gonna need to add a parenthesis for fluid page as well
+             ) #end of Encounter Histories Tab
+    ) #end of navbar page
 ) #end of fluidpage
 
-#     # Application title
-#     titlePanel("WGFP Data Exploration"),
-# 
-#     # Sidebar with a slider input for number of bins 
-#     sidebarLayout(
-#         sidebarPanel(
-#             #textInput("textinput1", "Filter by Tag"),
-#             dateRangeInput("drangeinput1", "Select a Date Range:",
-#                            start = "2020-09-03", 
-#                            end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
-#             pickerInput(inputId = "picker1",
-#                         label = "Select Antennas",
-#                         choices = unique(df_list$All_Detections$Site_Code),
-#                         selected = unique(df_list$All_Detections$Site_Code),
-#                         multiple = TRUE,
-#                         options = list(
-#                             `actions-box` = TRUE #this makes the "select/deselect all" option
-#                         ),
-#                 
-#             ), #end of picker input
-#             
-#             pickerInput(inputId = "picker2",
-#                         label = "Select Fish Species:",
-#                         choices = unique(df_list$All_Detections$Species),
-#                         selected = unique(df_list$All_Detections$Species),
-#                         multiple = TRUE,
-#                         options = list(
-#                             `actions-box` = TRUE #this makes the "select/deselect all" option
-#                         ),
-#                         
-#             ), #end of picker 2 input
-#             
-#             pickerInput(inputId = "picker3",
-#                         label = "Select Release Site:",
-#                         choices = unique(df_list$All_Detections$ReleaseSite),
-#                         selected = unique(df_list$All_Detections$ReleaseSite),
-#                         multiple = TRUE,
-#                         options = list(
-#                           `actions-box` = TRUE #this makes the "select/deselect all" option
-#                         ),
-#                         choicesOpt = list(
-#                           style = rep(("color: black; background: lightgrey; font-weight: bold;"),10)
-#                      ) #end of choices opt
-# 
-#             ), #end of picker 3 input
-# 
-#             checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
-#             checkboxInput("checkbox2", "Remove Duplicate TAGs"),
-#             #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
-#             submitButton("Update inputs", icon("sync"))
-#         ), #end of sidebar panel
-# 
-#         #
-#         mainPanel(tabsetPanel(
-#             tabPanel("How to Use",
-#                      includeHTML(paste0("www/", "WGFP_dataclean_vis_about.html"))),
-#             tabPanel("Stationary Clean",
-#                      withSpinner(DT::dataTableOutput("stationary1"))),
-#             tabPanel("Biomark",
-#                      withSpinner(DT::dataTableOutput("biomark1"))),
-#             tabPanel("Mobile",
-#                      withSpinner(DT::dataTableOutput("mobile1"))),
-#             tabPanel("All Detections",
-#                      withSpinner(DT::dataTableOutput("alldetections1"))),
-#             tabPanel("Encounter Release History",
-#                      withSpinner(DT::dataTableOutput("enc_release1")))
-#             
-#             
-#         ), #end of tabset panel
-#         
-#         ) #end of main panel
-#     )#end of sidebarLayout
-# )
 
 # Define server logic
 # Warning: Error in validate_session_object: object 'session' not found solved by adding session to the part up here
 server <- function(input, output, session) {
     
+
+# Ind D Reactives ---------------------------------------------------------
+
+  
+    indiv_datasets_list <- eventReactive(input$button1,{
+      
+      
+      stationary_filtered <- df_list$WGFP_Clean %>%
+        filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
+               #TAG == input$textinput1 #not gonna do tag filtering for now
+        )
+      
+      biomark_filtered <- Biomark %>%
+        filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
+      
+      mobile_filtered <- Mobile %>%
+        filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
+      
+      indiv_d_list <- list(
+        "stationarycleandata" = stationary_filtered,
+        "biomarkdata" = biomark_filtered,
+        "mobiledata" = mobile_filtered
+        # "all_det_data" = all_det_filtered,
+        # "enc_release_data" = Enc_release_data_filtered
+      )
+      
+      return(indiv_d_list)
+      
+      
+    })
+    
+
+# Enc Hist Reactives ------------------------------------------------------
+
+    
     #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
-    #i guess reactive ({}) makes it so you can make multiple expressions within a reactive contect whereas reactive() can only do 1
-    data_list <- reactive({
-        stationary_filtered <- df_list$WGFP_Clean %>%
-            filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
-                   #TAG == input$textinput1 #not gonna do tag filtering for now
-                   )
+    #i guess reactive ({}) makes it so you can make multiple expressions within a reactive context whereas reactive() can only do 1
+    data_list <- eventReactive(input$button2,{
+        # stationary_filtered <- df_list$WGFP_Clean %>%
+        #     filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
+        #            #TAG == input$textinput1 #not gonna do tag filtering for now
+        #            )
         
         
-        biomark_filtered <- Biomark %>%
-            filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
-        
-        mobile_filtered <- Mobile %>%
-            filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
+        # biomark_filtered <- Biomark %>%
+        #     filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
+        # 
+        # mobile_filtered <- Mobile %>%
+        #     filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
         
         all_det_filtered <- df_list$All_Detections %>%
             #unique(mtcars[,input$choose_columns])distinct(c(input$picker3)) %>%
-            filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
+            filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
                    Species %in% input$picker2,
                    ReleaseSite %in% input$picker3
@@ -261,24 +243,24 @@ server <- function(input, output, session) {
       ### Filtering for TAG, SIte Code, and Day  
         
     if (input$checkbox1 == TRUE & input$checkbox2 == FALSE) {
-        stationary_filtered <- df_list$WGFP_Clean %>%
-            distinct(TAG, SCD, DTY, .keep_all = TRUE) %>%
-            filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
-                   #TAG == input$textinput1 #not gonna do tag filtering for now
-            )
-        
-        biomark_filtered <- Biomark %>%
-            distinct(DEC.Tag.ID, Reader.ID, Scan.Date, .keep_all = TRUE) %>%
-            filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
-        
-        mobile_filtered <- Mobile %>%
-            distinct(TAG, MobileAnt, MobileDate, .keep_all = TRUE) %>%
-            filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
-        
+        # stationary_filtered <- df_list$WGFP_Clean %>%
+        #     distinct(TAG, SCD, DTY, .keep_all = TRUE) %>%
+        #     filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
+        #            #TAG == input$textinput1 #not gonna do tag filtering for now
+        #     )
+        # 
+        # biomark_filtered <- Biomark %>%
+        #     distinct(DEC.Tag.ID, Reader.ID, Scan.Date, .keep_all = TRUE) %>%
+        #     filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
+        # 
+        # mobile_filtered <- Mobile %>%
+        #     distinct(TAG, MobileAnt, MobileDate, .keep_all = TRUE) %>%
+        #     filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
+        # 
         
         all_det_filtered <- df_list$All_Detections %>%
             distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
-            filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
+            filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
                    Species %in% input$picker2,
                    ReleaseSite %in% input$picker3) %>%
@@ -293,7 +275,7 @@ server <- function(input, output, session) {
           
           all_det_filtered <- df_list$All_Detections %>%
             distinct(TAG, .keep_all = TRUE) %>%
-            filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
+            filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
                    Species %in% input$picker2,
                    ReleaseSite %in% input$picker3) %>%
@@ -301,9 +283,9 @@ server <- function(input, output, session) {
         }
 
         d_list <- list(
-            "stationarycleandata" = stationary_filtered,
-            "biomarkdata" = biomark_filtered,
-            "mobiledata" = mobile_filtered,
+            # "stationarycleandata" = stationary_filtered,
+            # "biomarkdata" = biomark_filtered,
+            # "mobiledata" = mobile_filtered,
             "all_det_data" = all_det_filtered,
             "enc_release_data" = Enc_release_data_filtered
         )
@@ -334,7 +316,7 @@ server <- function(input, output, session) {
     output$stationary1 <- DT::renderDataTable(
         
       
-        data_list()$stationarycleandata,
+      indiv_datasets_list()$stationarycleandata,
         rownames = FALSE,
         #extensions = c('Buttons'),
         #for slider filter instead of text input
@@ -350,7 +332,7 @@ server <- function(input, output, session) {
     
     output$biomark1 <- renderDataTable(
         
-        data_list()$biomarkdata,
+      indiv_datasets_list()$biomarkdata,
         rownames = FALSE,
         #extensions = c('Buttons'),
         #for slider filter instead of text input
@@ -365,7 +347,7 @@ server <- function(input, output, session) {
     
     output$mobile1 <- renderDataTable(
         
-        data_list()$mobiledata,
+      indiv_datasets_list()$mobiledata,
         rownames = FALSE,
         #extensions = c('Buttons'),
         #for slider filter instead of text input

@@ -4,7 +4,8 @@ library(tidyverse) #error has occ
 library(lubridate)
 library(DT)
 library(shinyWidgets) # for pickerinput
-
+library(shinythemes)
+library(bslib)
 #Biomark is temporarily labelled as B3 and B4 to make data filtering easier
 # tieh the site_code %in% picker1 line, because B1 and B2 are technically "in" RB1 and Rb2, it would include them to be part of it 
 # so for now this is easier
@@ -40,83 +41,188 @@ Enc_release_data <- df_list$ENC_Release2 %>%
 #                          as.character(mdy(Date)),
 #                          Date))
                     
-
+rainbow_trout_pallette <- list(pink1 = "#E3BABBFF", olive_green1 = "#C4CFBFFF", dark_olive_green1 = "#81754EFF",
+                               mustard_yellow1 = "#CBA660FF", brown_yellow = "#86551CFF" )
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+  
+  navbarPage(title = "WGFP Data Exploration",
+             theme = shinytheme("lumen"), #end of navbar page arguments; what follow is all inside it
 
-    # Application title
-    titlePanel("WGFP Data Exploration"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            #textInput("textinput1", "Filter by Tag"),
-            dateRangeInput("drangeinput1", "Select a Date Range:",
-                           start = "2020-09-03", 
-                           end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
-            pickerInput(inputId = "picker1",
-                        label = "Select Antennas",
-                        choices = unique(df_list$All_Detections$Site_Code),
-                        selected = unique(df_list$All_Detections$Site_Code),
-                        multiple = TRUE,
-                        options = list(
-                            `actions-box` = TRUE #this makes the "select/deselect all" option
-                        ),
-                
-            ), #end of picker input
-            
-            pickerInput(inputId = "picker2",
-                        label = "Select Fish Species:",
-                        choices = unique(df_list$All_Detections$Species),
-                        selected = unique(df_list$All_Detections$Species),
-                        multiple = TRUE,
-                        options = list(
-                            `actions-box` = TRUE #this makes the "select/deselect all" option
-                        ),
+               
+             #   bs_theme(
+             #   bg = rainbow_trout_pallette$dark_olive_green1,
+             #   fg = rainbow_trout_pallette$pink1,
+             #   primary = "#CBA660FF",
+             #   secondary = "#86551CFF",
+             #   base_font = "#E3BABBFF",
+             #   code_font =  "#C4CFBFFF"
+             #     
+             # ),
+             
+             # tags$head(tags$style(HTML('.navbar-static-top {background-color: green;}',
+             #                           '.navbar-default .navbar-nav>.active>a {background-color: green;}'))),
+             # 
+             tabPanel("About/How to Use",
+                      includeHTML(paste0("www/", "WGFP_dataclean_vis_about.html"))
+                      ), #end fo how to use TabPanel
+             tabPanel("Individual Datasets",
+                      sidebarLayout(
+                        sidebarPanel(),
+                       
+                      mainPanel(tabsetPanel(
+                        tabPanel("Stationary Clean",
+                                 withSpinner(DT::dataTableOutput("stationary1"))),
+                        tabPanel("Biomark",
+                                 withSpinner(DT::dataTableOutput("biomark1"))),
+                        tabPanel("Mobile",
+                                 withSpinner(DT::dataTableOutput("mobile1")))
                         
-            ), #end of picker 2 input
-            
-            pickerInput(inputId = "picker3",
-                        label = "Select Release Site:",
-                        choices = unique(df_list$All_Detections$ReleaseSite),
-                        selected = unique(df_list$All_Detections$ReleaseSite),
-                        multiple = TRUE,
-                        options = list(
-                          `actions-box` = TRUE #this makes the "select/deselect all" option
-                        ),
-                        choicesOpt = list(
-                          style = rep(("color: black; background: lightgrey; font-weight: bold;"),10)
-                     ) #end of choices opt
+                          ) #end of sidebarlayout: incldes sidebar panel and mainpanel
+                        ) #end of individual datasets tabset panel
+                      )#end of individual datasets Mainpanel)
+               
+                    ),#end of Individual data tab panel
+             
+             # new Tab "Encounter Histories"
+             
+             tabPanel("Encounter Histories",
+                      sidebarLayout(
+                        sidebarPanel(
+                          #textInput("textinput1", "Filter by Tag"),
+                          dateRangeInput("drangeinput1", "Select a Date Range:",
+                                         start = "2020-09-03", 
+                                         end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
+                          pickerInput(inputId = "picker1",
+                                      label = "Select Antennas",
+                                      choices = unique(df_list$All_Detections$Site_Code),
+                                      selected = unique(df_list$All_Detections$Site_Code),
+                                      multiple = TRUE,
+                                      options = list(
+                                        `actions-box` = TRUE #this makes the "select/deselect all" option
+                                      ),
+                                      
+                          ), #end of picker input
+                          
+                          pickerInput(inputId = "picker2",
+                                      label = "Select Fish Species:",
+                                      choices = unique(df_list$All_Detections$Species),
+                                      selected = unique(df_list$All_Detections$Species),
+                                      multiple = TRUE,
+                                      options = list(
+                                        `actions-box` = TRUE #this makes the "select/deselect all" option
+                                      ),
+                                      
+                          ), #end of picker 2 input
+                          
+                          pickerInput(inputId = "picker3",
+                                      label = "Select Release Site:",
+                                      choices = unique(df_list$All_Detections$ReleaseSite),
+                                      selected = unique(df_list$All_Detections$ReleaseSite),
+                                      multiple = TRUE,
+                                      options = list(
+                                        `actions-box` = TRUE #this makes the "select/deselect all" option
+                                      ),
+                                      choicesOpt = list(
+                                        style = rep(("color: black; background: lightgrey; font-weight: bold;"),10)
+                                      ) #end of choices opt
+                                      
+                          ), #end of picker 3 input
+                          
+                          checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
+                          checkboxInput("checkbox2", "Remove Duplicate TAGs"),
+                          #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
+                          submitButton("Update inputs", icon("sync"))
+                        ), #end of sidebar 
+                        mainPanel(tabsetPanel(
+                          tabPanel("All Detections",
+                                   withSpinner(DT::dataTableOutput("alldetections1"))),
+                          tabPanel("Encounter Release History",
+                                   withSpinner(DT::dataTableOutput("enc_release1")))
+                          
+                          
+                            )#end of encounter histories tabset panel within mainPanel
+                          )#end of mainPanel
+                          
+                        ) #end of Encounter histories sidebar layout
+                      
+                      ) #end of Encounter Histories Tab
+             ) #end of navbar page; gonna need to add a parenthesis for fluid page as well
+) #end of fluidpage
 
-            ), #end of picker 3 input
-
-            checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
-            checkboxInput("checkbox2", "Remove Duplicate TAGs"),
-            #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
-            submitButton("Update inputs", icon("sync"))
-        ), #end of sidebar panel
-
-        #
-        mainPanel(tabsetPanel(
-            tabPanel("How to Use",
-                     includeHTML(paste0("www/", "WGFP_dataclean_vis_about.html"))),
-            tabPanel("Stationary Clean",
-                     withSpinner(DT::dataTableOutput("stationary1"))),
-            tabPanel("Biomark",
-                     withSpinner(DT::dataTableOutput("biomark1"))),
-            tabPanel("Mobile",
-                     withSpinner(DT::dataTableOutput("mobile1"))),
-            tabPanel("All Detections",
-                     withSpinner(DT::dataTableOutput("alldetections1"))),
-            tabPanel("Encounter Release History",
-                     withSpinner(DT::dataTableOutput("enc_release1")))
-            
-            
-        ), #end of tabset panel
-        
-        ) #end of main panel
-    )#end of sidebarLayout
-)
+#     # Application title
+#     titlePanel("WGFP Data Exploration"),
+# 
+#     # Sidebar with a slider input for number of bins 
+#     sidebarLayout(
+#         sidebarPanel(
+#             #textInput("textinput1", "Filter by Tag"),
+#             dateRangeInput("drangeinput1", "Select a Date Range:",
+#                            start = "2020-09-03", 
+#                            end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
+#             pickerInput(inputId = "picker1",
+#                         label = "Select Antennas",
+#                         choices = unique(df_list$All_Detections$Site_Code),
+#                         selected = unique(df_list$All_Detections$Site_Code),
+#                         multiple = TRUE,
+#                         options = list(
+#                             `actions-box` = TRUE #this makes the "select/deselect all" option
+#                         ),
+#                 
+#             ), #end of picker input
+#             
+#             pickerInput(inputId = "picker2",
+#                         label = "Select Fish Species:",
+#                         choices = unique(df_list$All_Detections$Species),
+#                         selected = unique(df_list$All_Detections$Species),
+#                         multiple = TRUE,
+#                         options = list(
+#                             `actions-box` = TRUE #this makes the "select/deselect all" option
+#                         ),
+#                         
+#             ), #end of picker 2 input
+#             
+#             pickerInput(inputId = "picker3",
+#                         label = "Select Release Site:",
+#                         choices = unique(df_list$All_Detections$ReleaseSite),
+#                         selected = unique(df_list$All_Detections$ReleaseSite),
+#                         multiple = TRUE,
+#                         options = list(
+#                           `actions-box` = TRUE #this makes the "select/deselect all" option
+#                         ),
+#                         choicesOpt = list(
+#                           style = rep(("color: black; background: lightgrey; font-weight: bold;"),10)
+#                      ) #end of choices opt
+# 
+#             ), #end of picker 3 input
+# 
+#             checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
+#             checkboxInput("checkbox2", "Remove Duplicate TAGs"),
+#             #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
+#             submitButton("Update inputs", icon("sync"))
+#         ), #end of sidebar panel
+# 
+#         #
+#         mainPanel(tabsetPanel(
+#             tabPanel("How to Use",
+#                      includeHTML(paste0("www/", "WGFP_dataclean_vis_about.html"))),
+#             tabPanel("Stationary Clean",
+#                      withSpinner(DT::dataTableOutput("stationary1"))),
+#             tabPanel("Biomark",
+#                      withSpinner(DT::dataTableOutput("biomark1"))),
+#             tabPanel("Mobile",
+#                      withSpinner(DT::dataTableOutput("mobile1"))),
+#             tabPanel("All Detections",
+#                      withSpinner(DT::dataTableOutput("alldetections1"))),
+#             tabPanel("Encounter Release History",
+#                      withSpinner(DT::dataTableOutput("enc_release1")))
+#             
+#             
+#         ), #end of tabset panel
+#         
+#         ) #end of main panel
+#     )#end of sidebarLayout
+# )
 
 # Define server logic
 # Warning: Error in validate_session_object: object 'session' not found solved by adding session to the part up here

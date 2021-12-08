@@ -1,6 +1,7 @@
 library(tidyverse)
 library(readxl)
 library(lubridate)
+library(fishualize)
 #library(threadr) #needed for period to string function
 
 
@@ -156,6 +157,7 @@ Mobile2 <- Mobile %>%
 # Intervals ---------------------------------------------------------------
 
 All_detections <- df_list$All_Detections
+Enc_release_data <- df_list$ENC_Release2
 # x <- All_detections$Scan_Date
 # earliest_date <- min(x)
 # recent_date <- max(x)
@@ -176,27 +178,27 @@ All_detections_05 <- All_detections %>%
 
 #unique tags by site and Day
 
+# don't need this part anymore since all_detections now contains release data
+# spc_enc_only <- Enc_release_data %>%
+#   select(Species, Length, Weight, TAG)
+# 
+# detections_and_species <- left_join(All_detections_05, spc_enc_only, by = "TAG")
 
-spc_enc_only <- Enc_release_data %>%
-  select(Species, Length, Weight, TAG)
-
-detections_and_species <- left_join(All_detections_05, spc_enc_only, by = "TAG")
-
-detections_and_species %>%
+All_detections_05 %>%
   count(Site_Code, Species, weeks_since) %>%
   ggplot(aes(x = weeks_since, y = n, fill = Site_Code)) +
   geom_bar(stat = "identity") +
   theme_classic() +
   labs(title = "Weekly detections by Site")
 
-detections_and_species %>%
+All_detections_05 %>%
   count(Site_Code, Species) %>%
   ggplot(aes(x = Species, y = n, fill = Site_Code)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   theme_classic() +
   labs(title = "Raw Number of detections by Species and Site")
 
-detections_and_species %>%
+All_detections_05 %>%
   distinct(TAG, Site_Code, .keep_all = TRUE) %>%
   count(Site_Code,Species) %>%
   ggplot(aes(x = Site_Code, y = n, fill = Species)) +
@@ -204,7 +206,19 @@ detections_and_species %>%
   theme_classic() +
   labs(title = "Species Detections by Site, Controlled by Day", subtitle = "A fish with a million detections on one day only registers once") +
   ylab("Number of Unique Days") +
-  xlab("Site")
+  xlab("Site") +
+  scale_fill_fish_d(option = "Oncorhynchus_mykiss", begin = .1, end = 1) + #Oncorhynchus_mykiss #beginning and end adjust the color pallete 
+  add_fishape(family = "Salmonidae",
+              option = "Oncorhynchus_nerka",
+               xmin = 1, xmax = 3, ymin = 200, ymax = 400,
+              fill = fish(option = "Oncorhynchus_nerka", n = 4)[2],
+               alpha = 0.8
+              )
+
+spp <- fishualize::fish_palettes()
+library(rfishbase)
+# 2. Get data on the included species from FishBase using the rfishbase package
+dt <- rfishbase::species(gsub("_"," ", spp))
 
 ###Weeks since datawrangling
 All_detections_05 <- All_detections %>%
@@ -358,3 +372,9 @@ unique(df_list$All_Detections$ReleaseSite)
 
 All_Detections_21 <- anti_join(All_detections, Release1, by = "TAG")
 unique(All_Detections_21$TAG)
+
+#gets x colors of the theme for that fish species
+x <- fish(n = 5,
+  
+  option = "Oncorhynchus_mykiss"
+)

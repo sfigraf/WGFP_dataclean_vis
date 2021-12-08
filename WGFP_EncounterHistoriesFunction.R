@@ -118,11 +118,17 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   Release1 <- Release %>%
     rename(TAG = TagID)
   
+  #full join retains tags with no release info, left join will get only the tags that have release info
+  
+  #All_Detections_2 <- full_join(All_detections, Release1, by = "TAG")
   All_Detections_2 <- left_join(All_detections, Release1, by = "TAG")
+  
   All_Detections_3 <- All_Detections_2 %>%
-    select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X.x, UTM_Y.x, ReleaseSite, Species, Length, Weight ) %>%
+    select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X.x, UTM_Y.x, ReleaseSite, Date, Species, Length, Weight ) %>%
     rename(UTM_X = UTM_X.x,
-           UTM_Y = UTM_Y.x)
+           UTM_Y = UTM_Y.x,
+           Release_Date = Date) %>%
+    mutate(Release_Date = mdy(Release_Date))
     
   
   ### Create Encounter Histories ###
@@ -316,7 +322,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
            HP = (HP3_n > 0 | HP4_n >0),
            CF = (CF5_n > 0 | CF6_n >0),
            Biomark = (B1_n > 0 | B2_n >0),
-           Mobile = (M1_n > 0 | M2_n >0))
+           Mobile = (M1_n > 0 | M2_n >0)) %>%
+    filter(!ReleaseSite %in% 0)
   
   # ### Save the function to use in the future ###
   # #setwd("U:\\Projects\\Colorado_River\\Windy_Gap_FishMovementStudy\\Data\\RFID\\Detections\\CodingDetections")

@@ -342,3 +342,19 @@ x <- anti_join(ENC_Release2_1, Release1, by = "TAG")
 All_Detections_1 %>%
   filter(DTY >= "2020-12-03" & DTY <= "2021-04-15")
          
+list1 <- list(All_Detections_1$TAG, All_Detections_1$Scan_Date, All_Detections_1$Site_Code)
+sapply(list1, `[`, 1)
+
+
+x<-x %>%
+  #distinct(TAG, Site_Code, Scan_Date,.keep_all=TRUE) %>%
+  distinct(TAG, .keep_all = TRUE) %>%
+  filter(Species == "MTS")
+  
+  #unique(All_Detections_1[,c("TAG", "Scan_Date", "Site_Code")])
+x <- unique(All_Detections_1[,c("TAG", "Scan_Date", "Site_Code")])
+
+unique(df_list$All_Detections$ReleaseSite)
+
+All_Detections_21 <- anti_join(All_detections, Release1, by = "TAG")
+unique(All_Detections_21$TAG)

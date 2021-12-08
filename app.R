@@ -32,6 +32,7 @@ Enc_release_data <- df_list$ENC_Release2 %>%
     mutate(Date = ifelse(str_detect(Date, "/"),
                          as.character(mdy(Date)),
                          Date))
+  
 
 #want to put this in the function when ready
 # Enc_release_data <- ENC_Release2_1 %>%
@@ -66,27 +67,31 @@ ui <- fluidPage(
             
             pickerInput(inputId = "picker2",
                         label = "Select Fish Species:",
-                        choices = unique(df_list$ENC_Release2$Species),
-                        selected = unique(df_list$ENC_Release2$Species),
+                        choices = unique(df_list$All_Detections$Species),
+                        selected = unique(df_list$All_Detections$Species),
                         multiple = TRUE,
                         options = list(
                             `actions-box` = TRUE #this makes the "select/deselect all" option
                         ),
                         
-            ), #end of picker input
+            ), #end of picker 2 input
             
-            # pickerInput(inputId = "picker3",
-            #             label = "Select Distinct() Fields:",
-            #             choices = colnames(df_list$All_Detections),
-            #             #selected = unique(df_list$ENC_Release2$Species),
-            #             multiple = TRUE,
-            #             options = list(
-            #               `actions-box` = TRUE #this makes the "select/deselect all" option
-            #             ),
-            #             
-            # ), #end of picker input
-            
-            checkboxInput("checkbox1", "Remove Duplicate Days"),
+            pickerInput(inputId = "picker3",
+                        label = "Select Release Site:",
+                        choices = unique(df_list$All_Detections$ReleaseSite),
+                        selected = unique(df_list$All_Detections$ReleaseSite),
+                        multiple = TRUE,
+                        options = list(
+                          `actions-box` = TRUE #this makes the "select/deselect all" option
+                        ),
+                        choicesOpt = list(
+                          style = rep(("color: black; background: lightgrey; font-weight: bold;"),10)
+                     ) #end of choices opt
+
+            ), #end of picker 3 input
+
+            checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
+            checkboxInput("checkbox2", "Remove Duplicate TAGs"),
             #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
             submitButton("Update inputs", icon("sync"))
         ), #end of sidebar panel
@@ -133,22 +138,23 @@ server <- function(input, output, session) {
             filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
         
         all_det_filtered <- df_list$All_Detections %>%
-          #distinct(c(input$picker3)) %>%
+            #unique(mtcars[,input$choose_columns])distinct(c(input$picker3)) %>%
             filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
                    Site_Code %in% input$picker1,
-                   Species %in% input$picker2
+                   Species %in% input$picker2,
+                   ReleaseSite %in% input$picker3
                    ) %>%
           select(-Scan_Date)
         
-        Enc_release_data_filtered <- df_list$ENC_Release2 %>%
+        Enc_release_data_filtered <- Enc_release_data %>%
             filter(Species %in% input$picker2)
         
         # error below solved because I wasn't using the correct variable names for each dataset
         # x `Site_Code` not found in `.data`.
         # x `Scan_Date` not found in `.data` 
+      ### Filtering for TAG, SIte Code, and Day  
         
-        # this part doesn't work because if the box is checked, the rest of the filters don't apply
-    if (input$checkbox1 == TRUE) {
+    if (input$checkbox1 == TRUE & input$checkbox2 == FALSE) {
         stationary_filtered <- df_list$WGFP_Clean %>%
             distinct(TAG, SCD, DTY, .keep_all = TRUE) %>%
             filter(DTY >= req(input$drangeinput1[1]) & DTY <= req(input$drangeinput1[2]),
@@ -168,7 +174,8 @@ server <- function(input, output, session) {
             distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
             filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
                    Site_Code %in% input$picker1,
-                   Species %in% input$picker2) %>%
+                   Species %in% input$picker2,
+                   ReleaseSite %in% input$picker3) %>%
           select(-Scan_DateTime)
         
         
@@ -176,14 +183,17 @@ server <- function(input, output, session) {
         #need new selective picker to select what to do distinct() on
         
         
-        # if (input$checkbox2 == TRUE) {
-        #   all_det_filtered <- df_list$All_Detections %>%
-        #     distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
-        #     filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
-        #            Site_Code %in% input$picker1,
-        #            Species %in% input$picker2)
-        # }
-        # 
+        if (input$checkbox2 == TRUE) {
+          
+          all_det_filtered <- df_list$All_Detections %>%
+            distinct(TAG, .keep_all = TRUE) %>%
+            filter(Scan_DateTime >= input$drangeinput1[1] & Scan_DateTime <= input$drangeinput1[2],
+                   Site_Code %in% input$picker1,
+                   Species %in% input$picker2,
+                   ReleaseSite %in% input$picker3) %>%
+            select(-Scan_Date)
+        }
+
         d_list <- list(
             "stationarycleandata" = stationary_filtered,
             "biomarkdata" = biomark_filtered,

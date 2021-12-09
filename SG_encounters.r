@@ -256,59 +256,72 @@ str_detect(x, "/")
 #   #mutate(ARR1 = hms(ARR))
 
 
-Stationary12 <- Stationary11 %>%
+# Correcting bad timestamps in stationary file ----------------------------
+
+
+# this is typically the problematic date range
+Stationary12 <- Stationary %>%
   filter(
-    # DTY >= as.Date("2021-03-02") & DTY <= as.Date("2021-04-06"),
-    #      SCD == "RB1",
+    DTY >= as.Date("2021-03-02") & DTY <= as.Date("2021-04-06"),
+         SCD == "RB1",
          TAG != "900_230000228791")
          #str_length(ARR) <8)
 
-#this is the same as the filter right now in WGFP function
-WGFP_NoMarkers_1 <- Stationary %>%
-  mutate(TAG = str_replace(TAG, "\\_", "")) %>%
-  filter(str_detect(TAG, "^900"), 
-         !TAG %in% c("900230000102751","900226001581072","900230000004000"))
-           # Stationary$TAG !=  &
-           # Stationary$TAG !=  &
-           # Stationary$TAG !=  &
-           #this one is the ghost tag removed 4/6 from RB1
-           # (Stationary$TAG != "900230000228791" | DTY <= as.Date("2021-12-01"))
-  
+# #this is the same as the filter right now in WGFP function
+# WGFP_NoMarkers_1 <- Stationary %>%
+#   mutate(TAG = str_replace(TAG, "\\_", "")) %>%
+#   filter(str_detect(TAG, "^900"), 
+#          !TAG %in% c("900230000102751","900226001581072","900230000004000"))
+#            # Stationary$TAG !=  &
+#            # Stationary$TAG !=  &
+#            # Stationary$TAG !=  &
+#            #this one is the ghost tag removed 4/6 from RB1
+#            # (Stationary$TAG != "900230000228791" | DTY <= as.Date("2021-12-01"))
+#   
+# 
+# WGFP_NoMarkers_11 <- Stationary11 %>%
+#   mutate(TAG = str_replace(TAG, "\\_", "")) %>%
+#   filter(str_detect(TAG, "^900"), 
+#          !TAG %in% c("900230000102751","900226001581072","900230000004000"),
+#          # Stationary$TAG !=  &
+#          # Stationary$TAG !=  &
+#          # Stationary$TAG !=  &
+#          #this one is the ghost tag removed 4/6 from RB1
+#          (Stationary$TAG != "900230000228791" | DTY <= as.Date("2021-03-02"))
+#   )
+# 
+# 
+# #see which rows in x are different from those in Y
+# diferences <- anti_join(WGFP_NoMarkers, WGFP_NoMarkers_1)
 
-WGFP_NoMarkers_11 <- Stationary11 %>%
-  mutate(TAG = str_replace(TAG, "\\_", "")) %>%
-  filter(str_detect(TAG, "^900"), 
-         !TAG %in% c("900230000102751","900226001581072","900230000004000"),
-         # Stationary$TAG !=  &
-         # Stationary$TAG !=  &
-         # Stationary$TAG !=  &
-         #this one is the ghost tag removed 4/6 from RB1
-         (Stationary$TAG != "900230000228791" | DTY <= as.Date("2021-03-02"))
-  )
-
-
-#see which rows in x are different from those in Y
-diferences <- anti_join(WGFP_NoMarkers, WGFP_NoMarkers_1)
-
+#gets the rows that are have probematic ARR
 problem_times <- Stationary %>%
   filter(str_length(ARR) < 8) %>%
-  mutate(month111 = month(DTY)) %>%
-  distinct(month111, SCD,  .keep_all = TRUE)
+  mutate(month111 = month(DTY)) 
 
-no_problem_times <- Stationary %>%
-  filter(str_length(ARR) >= 8) 
+#gets which ecat days are problematic
+problem_times %>%
+  distinct(DTY) 
+  #distinct(month111, SCD,  .keep_all = TRUE)
+
+
 
 
 write_csv(Stationary1, "WGFP_Raw_20211122.csv")
 # there was a problem with the Timestamps used in the files where 791 (the ghost tag) was present and also in the APril detections. So this part and above
 # is a 1 time solution to figure that all out
 new_times <- read.csv("new_times.csv", colClasses = c(rep("character",11)))
+#should be about 30030 entries
 new_times1 <- new_times %>%
   filter(!TAG %in% c("900_230000228791"))
 
+no_problem_times <- Stationary %>%
+  filter(str_length(ARR) >= 8)
+
 new_Stationary <- bind_rows(new_times1, no_problem_times)
 
-diferences <- anti_join(x, Stationary)
+#should be 30030 entries that are different
+diferences <- anti_join(new_Stationary, Stationary)
 
 write_csv(new_Stationary, "New_Stationary.csv")
 
@@ -317,6 +330,9 @@ write_csv(new_Stationary, "New_Stationary.csv")
 #   distinct(month111, SCD, DTY, .keep_all = TRUE)
 
 new_Stationary <- read.csv("New_Stationary.csv", colClasses = c(rep("character",11)))
+x <- new_Stationary %>%
+  filter(str_length(ARR) < 8)
+
 new_Stationary1 <- new_Stationary %>%
   mutate(ARR1 = case_when(str_detect(ARR, "AM") ~ hms(ARR) ,
                           str_detect(ARR, "PM") ~ hms(ARR) + hours(12),

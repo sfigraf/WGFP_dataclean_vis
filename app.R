@@ -18,7 +18,7 @@ library(bslib)
 
 
 
-Stationary <- read.csv(paste0("WGFP_Raw_20211130_1.csv"))
+Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
 Mobile <- read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))

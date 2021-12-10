@@ -636,3 +636,89 @@ ENC_Release2 <- ENC_Release1 %>%
          Biomark = (B1_n > 0 | B2_n >0),
          Mobile = (M1_n > 0 | M2_n >0)) %>%
   filter(!ReleaseSite %in% 0)
+
+
+
+# RECAPTURES --------------------------------------------------------------
+
+#This section reads in recaptures, takes a df of all detection info sans release info, and the relase info datasheet
+#it gets timstamps in order and corrects some column names in prep to combine
+# it first binds_rows() between all_detecitons and release to get an Event called "Release" that begins the journey for the ish
+# then binds_rows() on recaptures() to do the same for event "recaputre" 
+# then it left joins release info so that the whole dataframe will have release info
+# so now it's basically like the ALldetections df except now it includes recaptures.
+# next: can replace All_detections df
+
+# when saving csv from excel file in excel, make sure to specify TAG as a number otherwise it will try and save just the first part of TAG
+# which is bullshit
+recaps <- read.csv("WGFP_RecaptureData_Master.csv", colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
+#recaps <- read_csv("WGFP_RecaptureData_Master.csv", col_select = c(-1),col_types = "cccccccccnncccccccc" )
+#takes first column off bc for some reason there's a weird one going on
+recaps <- recaps[,-c(1, 14)]
+
+df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark)
+
+All_Detections_1 <- df_list$All_Detections
+
+#wrangling release data times
+#getting"12:00" to read 12:00:00
+Release1 <- Release %>%
+  rename(TAG = TagID) %>%
+  mutate(TAG = str_trim(TAG),
+         Date = mdy(Date),
+         Time1 = as_datetime(hm(Time)),
+         Time2 = str_sub(Time1, start = 11, end = -1),
+         DateTime = ymd_hms(paste(Date, Time2))) %>%
+  select(RS_Num,River,ReleaseSite,Date,DateTime,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) 
+
+recaps1 <- recaps %>%
+  rename(TAG = TagID) %>%
+  mutate(TAG = str_trim(TAG),
+         Date = mdy(Date),
+         Time1 = as_datetime(hm(Time)),
+         Time2 = str_sub(Time1, start = 11, end = -1),
+         DateTime = ymd_hms(paste(Date, Time2))) %>%
+  select(RS_Num,River,RecaptureSite,DateTime,Date,Time2,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) %>%
+  rename(Time = Time2,
+         Recap_Length = Length,
+         Recap_Weight = Weight
+         )
+
+#df without release info
+All_Detections_1 <- df_list$All_Detections
+
+All_Detections_1_merge <- All_Detections_1 %>%
+  mutate(Date = as.Date(Scan_Date)) %>%
+  rename(
+         DateTime = Scan_DateTime,
+         Event = Site_Code) 
+
+#gets a df with a event "Release"
+all_detections_release <- bind_rows(All_Detections_1_merge, Release1)
+
+# merge vs join; will want to do both 
+
+detections_release_recaps <- bind_rows(all_detections_release, recaps1)
+
+
+#fills in release info so it is known at any row of detection
+filled_in_release_rows <- left_join(detections_release_recaps, Release1, by = c("TAG"))
+
+
+#this is the final df 
+
+filled_in_release_rows_condensed <- filled_in_release_rows %>%
+  select(Date.x, DateTime.x, TAG, Event.x, Species.y, Length.y, Weight.y, ReleaseSite.y, Date.y, RecaptureSite, Recap_Length, Recap_Weight, UTM_X.x, UTM_Y.x) %>%
+  rename(Release_Date = Date.y)
+
+# detections_release_recaps1 <- detections_release_recaps %>%
+#   select(Date, DateTime, TAG, Event, Species, Length, Weight, ReleaseSite, RecaptureSite, Recap_Length, Recap_Weight)
+
+# detections_release_recaps11 <- detections_release_recaps1 %>%
+#   filter(Event == "Release" | Event == "Recapture")
+# 
+# 
+# x <- left_join(Release1, recaps1, by = "TAG")
+# #DF wih just release and recaputres made to try and compare growth rates
+# xx <- x %>%
+#   select(TAG, DateTime.x, DateTime.y, Length, Weight, ReleaseSite, RecaptureSite, Recap_Length, Recap_Weight)

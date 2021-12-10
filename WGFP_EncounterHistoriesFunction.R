@@ -106,7 +106,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   #All_Detections_2 <- full_join(All_detections, Release1, by = "TAG")
   All_Detections_2 <- left_join(All_detections, Release1, by = "TAG")
   
-  All_Detections_3 <- All_Detections_2 %>%
+  All_Detections_Release <- All_Detections_2 %>%
     select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X.x, UTM_Y.x, ReleaseSite, Date, Species, Length, Weight ) %>%
     rename(UTM_X = UTM_X.x,
            UTM_Y = UTM_Y.x,
@@ -191,7 +191,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
            Mobile = (M1_n > 0 | M2_n >0)) %>%
     filter(!ReleaseSite %in% 0)
   
-  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_Detections_3, "Unknown_Tags" = unknown_tags)
+  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections_Release" = All_Detections_Release, "All_Detections" = All_detections, "Unknown_Tags" = unknown_tags)
   return(df_list)
 }
   

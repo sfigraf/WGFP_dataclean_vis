@@ -30,7 +30,7 @@ source("WGFP_EncounterHistoriesFunction.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark)
 
-All_Detections_1 <- df_list$All_Detections
+All_Detections_1 <- df_list$All_Detections_Release
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
 
@@ -82,7 +82,7 @@ ui <- fluidPage(
                         sidebarPanel(
                           dateRangeInput("drangeinput1", "Select a Date Range:",
                                          start = "2020-09-03", 
-                                         end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
+                                         end = max(df_list$All_Detections_Release$Scan_DateTime)), #end of date range input
                           actionButton("button1", label = "Render Table")
                           ),
                        
@@ -111,11 +111,11 @@ ui <- fluidPage(
                           #textInput("textinput1", "Filter by Tag"),
                           dateRangeInput("drangeinput2", "Select a Date Range:",
                                          start = "2020-09-03", 
-                                         end = max(df_list$All_Detections$Scan_DateTime)), #end of date range input
+                                         end = max(df_list$All_Detections_Release$Scan_DateTime)), #end of date range input
                           pickerInput(inputId = "picker1",
                                       label = "Select Antennas",
-                                      choices = unique(df_list$All_Detections$Site_Code),
-                                      selected = unique(df_list$All_Detections$Site_Code),
+                                      choices = unique(df_list$All_Detections_Release$Site_Code),
+                                      selected = unique(df_list$All_Detections_Release$Site_Code),
                                       multiple = TRUE,
                                       options = list(
                                         `actions-box` = TRUE #this makes the "select/deselect all" option
@@ -125,8 +125,8 @@ ui <- fluidPage(
                           
                           pickerInput(inputId = "picker2",
                                       label = "Select Fish Species:",
-                                      choices = unique(df_list$All_Detections$Species),
-                                      selected = unique(df_list$All_Detections$Species),
+                                      choices = unique(df_list$All_Detections_Release$Species),
+                                      selected = unique(df_list$All_Detections_Release$Species),
                                       multiple = TRUE,
                                       options = list(
                                         `actions-box` = TRUE #this makes the "select/deselect all" option
@@ -136,8 +136,8 @@ ui <- fluidPage(
                           
                           pickerInput(inputId = "picker3",
                                       label = "Select Release Site:",
-                                      choices = unique(df_list$All_Detections$ReleaseSite),
-                                      selected = unique(df_list$All_Detections$ReleaseSite),
+                                      choices = unique(df_list$All_Detections_Release$ReleaseSite),
+                                      selected = unique(df_list$All_Detections_Release$ReleaseSite),
                                       multiple = TRUE,
                                       options = list(
                                         `actions-box` = TRUE #this makes the "select/deselect all" option
@@ -215,7 +215,7 @@ server <- function(input, output, session) {
         
       
       
-        all_det_filtered <- df_list$All_Detections %>%
+        all_det_filtered <- df_list$All_Detections_Release %>%
             #unique(mtcars[,input$choose_columns])distinct(c(input$picker3)) %>%
             filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
@@ -234,7 +234,7 @@ server <- function(input, output, session) {
         
     if (input$checkbox1 == TRUE & input$checkbox2 == FALSE) {
         
-        all_det_filtered <- df_list$All_Detections %>%
+        all_det_filtered <- df_list$All_Detections_Release %>%
             distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
             filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
@@ -249,7 +249,7 @@ server <- function(input, output, session) {
         
         if (input$checkbox2 == TRUE) {
           
-          all_det_filtered <- df_list$All_Detections %>%
+          all_det_filtered <- df_list$All_Detections_Release %>%
             distinct(TAG, .keep_all = TRUE) %>%
             filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,

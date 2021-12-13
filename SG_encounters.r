@@ -654,7 +654,10 @@ ENC_Release2 <- ENC_Release1 %>%
 recaps <- read.csv("WGFP_RecaptureData_Master.csv", colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
 #recaps <- read_csv("WGFP_RecaptureData_Master.csv", col_select = c(-1),col_types = "cccccccccnncccccccc" )
 #takes first column off bc for some reason there's a weird one going on
-recaps <- recaps[,-c(1, 14)]
+#recaps <- recaps[,-c(1, 14)]
+
+recaps <- recaps  %>%
+  select(-Num, -QAQC)
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark)
 
@@ -709,7 +712,16 @@ filled_in_release_rows <- left_join(detections_release_recaps, Release1, by = c(
 
 filled_in_release_rows_condensed <- filled_in_release_rows %>%
   select(Date.x, DateTime.x, TAG, Event.x, Species.y, Length.y, Weight.y, ReleaseSite.y, Date.y, RecaptureSite, Recap_Length, Recap_Weight, UTM_X.x, UTM_Y.x) %>%
-  rename(Release_Date = Date.y)
+  rename(Release_Date = Date.y,
+         Date = Date.x,
+         Datetime = DateTime.x,
+         Event = Event.x,
+         Species = Species.y,
+         Release_Length = Length.y,
+         Release_Weight = Weight.y, 
+         ReleaseSite = ReleaseSite.y,
+         UTM_X = UTM_X.x,
+         UTM_Y = UTM_Y.x)
 
 # detections_release_recaps1 <- detections_release_recaps %>%
 #   select(Date, DateTime, TAG, Event, Species, Length, Weight, ReleaseSite, RecaptureSite, Recap_Length, Recap_Weight)

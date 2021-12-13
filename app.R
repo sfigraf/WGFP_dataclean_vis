@@ -22,13 +22,15 @@ Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
 Mobile <- read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
+Recaptures <- read.csv("WGFP_RecaptureData_Master.csv", colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
 
+  
 Mobile <- Mobile %>%
     mutate(MobileDate = as.character(mdy(MobileDate)))
 
 source("WGFP_EncounterHistoriesFunction.R")
 
-df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark)
+df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
 
 All_Detections_1 <- df_list$All_Detections_Release
 WGFP_Clean_1 <- df_list$WGFP_Clean
@@ -158,7 +160,9 @@ ui <- fluidPage(
                           tabPanel("All Detections",
                                    withSpinner(DT::dataTableOutput("alldetections1"))),
                           tabPanel("Encounter Release History",
-                                   withSpinner(DT::dataTableOutput("enc_release1")))
+                                   withSpinner(DT::dataTableOutput("enc_release1"))),
+                          tabPanel("All Events",
+                                   withSpinner(DT::dataTableOutput("allevents1")))
                           
                           
                           )#end of encounter histories tabset panel within mainPanel
@@ -225,7 +229,8 @@ server <- function(input, output, session) {
           select(-Scan_Date)
         
         Enc_release_data_filtered <- Enc_release_data %>%
-            filter(Species %in% input$picker2)
+            filter(Species %in% input$picker2,
+                   ReleaseSite %in% input$picker3)
         
         # error below solved because I wasn't using the correct variable names for each dataset
         # x `Site_Code` not found in `.data`.
@@ -260,7 +265,8 @@ server <- function(input, output, session) {
 
         enc_hist_d_list <- list(
             "all_det_data" = all_det_filtered,
-            "enc_release_data" = Enc_release_data_filtered
+            "enc_release_data" = Enc_release_data_filtered,
+            "allevents_data" = df_list$All_Events
         )
         
         return(enc_hist_d_list)
@@ -359,6 +365,20 @@ server <- function(input, output, session) {
           
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
+    )
+    
+    output$allevents1 <- renderDataTable(
+      enc_hist_data_list()$allevents_data,
+      rownames = FALSE,
+      #extensions = c('Buttons'),
+      #for slider filter instead of text input
+      filter = 'top',
+      options = list(
+        pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+        dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again #errorin list: arg 5 is empty because I had a comma after the dom argument so it thought there was gonna be another argument input
+        language = list(emptyTable = "Enter inputs and press Render Table")
+      ) #end of options list
+      
     )
 }
 

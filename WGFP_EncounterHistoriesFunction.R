@@ -2,7 +2,7 @@
 library(tidyverse)
 # Create Function
 
-WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
+WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   
   library(tidyverse)
   library(lubridate)
@@ -93,10 +93,79 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
   All_detections <- All_detections %>%
     filter(Scan_Date >= as.Date("2020-08-06")) %>% #right before the first date of marker tag detections on stationary antennas
     mutate(
-      #datetime1 = as.POSIXct(paste(Scan_Date, Scan_Time),format="%Y-%m-%d %H:%M:%S"),
+      #datetime1 = as.POSIXct(paste(Scan_Date, Scan_Time),format="%Y-%m-%d %H:%M:%S"), #this line works too
            datetime2 = ymd_hms(paste(Scan_Date, Scan_Time))) %>%
     rename(Scan_DateTime = datetime2) %>%
     select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
+  
+### all detections and recaps and release
+  #taking off some dumb columns; this line is kinda redundant though, should circle back to it
+  Recaptures <- Recaptures  %>%
+    select(-Num, -QAQC)
+  
+  #getting timestamps in order and getting relevant columns
+  Release1 <- Release %>%
+    rename(TAG = TagID) %>%
+    mutate(TAG = str_trim(TAG),
+           Date = mdy(Date),
+           Time1 = as_datetime(hm(Time)),
+           Time2 = str_sub(Time1, start = 11, end = -1),
+           DateTime = ymd_hms(paste(Date, Time2))) %>%
+    select(RS_Num,River,ReleaseSite,Date,DateTime,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) 
+  
+  #getting timestamps in order and getting relevant columns
+  
+  recaps1 <- Recaptures %>%
+    rename(TAG = TagID) %>%
+    mutate(TAG = str_trim(TAG),
+           Date = mdy(Date),
+           Time1 = as_datetime(hm(Time)),
+           Time2 = str_sub(Time1, start = 11, end = -1),
+           DateTime = ymd_hms(paste(Date, Time2))) %>%
+    select(RS_Num,River,RecaptureSite,DateTime,Date,Time2,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) %>%
+    rename(Time = Time2,
+           Recap_Length = Length,
+           Recap_Weight = Weight
+    )
+  
+  #getting all detectoins file ready to merge with encounters
+  All_Detections_1_merge <- All_detections %>%
+    mutate(Date = as.Date(Scan_Date)) %>%
+    rename(
+      DateTime = Scan_DateTime,
+      Event = Site_Code) 
+  
+  #gets a df with a event "Release" without columns filled in yet
+  all_detections_release <- bind_rows(All_Detections_1_merge, Release1)
+  
+  # bind rows vs left join; bind rows will make it so there is a "release" or "recapture" event and also make columns with relevant info
+  
+  detections_release_recaps <- bind_rows(all_detections_release, recaps1)
+  
+  #fills in release info so it is known at any row of detection
+  filled_in_release_rows <- left_join(detections_release_recaps, Release1, by = c("TAG"))
+  
+  
+  #this is the final df 
+  
+  filled_in_release_rows_condensed <- filled_in_release_rows %>%
+    select(Date.x, DateTime.x, TAG, Event.x, Species.y, Length.y, Weight.y, ReleaseSite.y, Date.y, RecaptureSite, Recap_Length, Recap_Weight, UTM_X.x, UTM_Y.x) %>%
+    rename(Release_Date = Date.y,
+           Date = Date.x,
+           Datetime = DateTime.x,
+           Event = Event.x,
+           Species = Species.y,
+           Release_Length = Length.y,
+           Release_Weight = Weight.y, 
+           ReleaseSite = ReleaseSite.y,
+           UTM_X = UTM_X.x,
+           UTM_Y = UTM_Y.x)
+  
+  
+  
+  
+### end of recaps and release joining section
+### start of potentiallly now superfluous all_detecttions_release section  
   
   Release1 <- Release %>%
     rename(TAG = TagID)
@@ -191,7 +260,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release){
            Mobile = (M1_n > 0 | M2_n >0)) %>%
     filter(!ReleaseSite %in% 0)
   
-  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections_Release" = All_Detections_Release, "All_Detections" = All_detections, "Unknown_Tags" = unknown_tags)
+  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections_Release" = All_Detections_Release, "All_Detections" = All_detections, 
+                  "All_Events" = filled_in_release_rows_condensed, "Unknown_Tags" = unknown_tags)
   return(df_list)
 }
   

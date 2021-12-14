@@ -99,9 +99,6 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
   
 ### all detections and recaps and release
-  #taking off some dumb columns; this line is kinda redundant though, should circle back to it
-  Recaptures <- Recaptures  %>%
-    select(-Num, -QAQC)
   
   #getting timestamps in order and getting relevant columns
   Release1 <- Release %>%
@@ -128,7 +125,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            Recap_Weight = Weight
     )
   
-  #getting all detectoins file ready to merge with encounters
+  #getting all detections file ready to merge with encounters
   All_Detections_1_merge <- All_detections %>%
     mutate(Date = as.Date(Scan_Date)) %>%
     rename(
@@ -148,6 +145,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   
   #this is the final df 
   
+  #Change na to "No info" in select columns so that it will register with the Picker input in the app
+  #pretty sure that's just a bug on the DT or shinyWidgets end that it can't select by NA
+  # 87 rows were not even showing up on the all_events app because the Species was NA -12/14/21 SG
+  
   filled_in_release_rows_condensed <- filled_in_release_rows %>%
     select(Date.x, DateTime.x, TAG, Event.x, Species.y, Length.y, Weight.y, ReleaseSite.y, Date.y, RecaptureSite, Recap_Length, Recap_Weight, UTM_X.x, UTM_Y.x) %>%
     rename(Release_Date = Date.y,
@@ -159,13 +160,13 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            Release_Weight = Weight.y, 
            ReleaseSite = ReleaseSite.y,
            UTM_X = UTM_X.x,
-           UTM_Y = UTM_Y.x)
-  
+           UTM_Y = UTM_Y.x) %>%
+    replace_na(list(Species = "No Info", ReleaseSite = "No Info"))
   
   
   
 ### end of recaps and release joining section
-### start of potentiallly now superfluous all_detecttions_release section  
+### start of potentially now superfluous all_detecttions_release section  
   
   Release1 <- Release %>%
     rename(TAG = TagID)

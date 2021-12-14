@@ -668,15 +668,17 @@ All_Detections_1 <- df_list$All_Detections
 Release1 <- Release %>%
   rename(TAG = TagID) %>%
   mutate(TAG = str_trim(TAG),
+         Event = str_trim(Event),
          Date = mdy(Date),
          Time1 = as_datetime(hm(Time)),
          Time2 = str_sub(Time1, start = 11, end = -1),
          DateTime = ymd_hms(paste(Date, Time2))) %>%
   select(RS_Num,River,ReleaseSite,Date,DateTime,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) 
 
-recaps1 <- recaps %>%
+recaps1 <- Recaptures %>%
   rename(TAG = TagID) %>%
   mutate(TAG = str_trim(TAG),
+         Event = str_trim(Event),
          Date = mdy(Date),
          Time1 = as_datetime(hm(Time)),
          Time2 = str_sub(Time1, start = 11, end = -1),
@@ -697,11 +699,17 @@ All_Detections_1_merge <- All_Detections_1 %>%
          Event = Site_Code) 
 
 #gets a df with a event "Release"
+#successfully puts 3436 rows onto the end 
 all_detections_release <- bind_rows(All_Detections_1_merge, Release1)
 
 # merge vs join; will want to do both 
 
 detections_release_recaps <- bind_rows(all_detections_release, recaps1)
+
+# x <- detections_release_recaps %>%
+#   filter(Event %in% c("Release","Recapture and Release"))
+# 
+# y <- anti_join( Release1,x, by = "TAG")
 
 
 #fills in release info so it is known at any row of detection
@@ -723,6 +731,12 @@ filled_in_release_rows_condensed <- filled_in_release_rows %>%
          UTM_X = UTM_X.x,
          UTM_Y = UTM_Y.x)
 
+
+x <- filled_in_release_rows_condensed %>%
+  filter(Event %in% c("Recapture and Release"))
+
+#539086-538465 = 621: number of rows currently getting lost between condensed rows and df displaying in app
+3436 - 2915
 # detections_release_recaps1 <- detections_release_recaps %>%
 #   select(Date, DateTime, TAG, Event, Species, Length, Weight, ReleaseSite, RecaptureSite, Recap_Length, Recap_Weight)
 
@@ -734,3 +748,75 @@ filled_in_release_rows_condensed <- filled_in_release_rows %>%
 # #DF wih just release and recaputres made to try and compare growth rates
 # xx <- x %>%
 #   select(TAG, DateTime.x, DateTime.y, Length, Weight, ReleaseSite, RecaptureSite, Recap_Length, Recap_Weight)
+
+# x <- all_events %>%
+#   filter(Event %in% c("Recapture")) %>%
+#   distinct(TAG, .keep_all = TRUE)
+# 
+# #trying to figure out why what is being displayed in allevents tab in rshiny app is 500-600 rows diferent than what is made in the function
+###SOLVED: my date range started at 2020-09-03 instead of 2020-09-01 when fish were first released
+
+app_file <- read.csv("allevents.csv")
+
+app_file1 <- app_file %>%
+  mutate(TAG = as.character(TAG))
+
+
+
+# differences <- anti_join(all_events, app_file1, by = "TAG")
+# unique_tags <- data.frame(unique(differences$TAG))
+# 
+# unique_tags <- unique_tags %>%
+#   rename(TAG = unique.differences.TAG.)
+# #colnames(unique_tags)
+# 
+# #these are unique tags that don't show up in all_events in the shiny app
+# x <- left_join(unique_tags, Release1, by = "TAG")
+# 
+# y <- left_join(x, all_events, by = "TAG")
+
+
+### trying to see the dif rows from release to no relase
+
+x <- Release1 %>%
+  distinct(TAG, .keep_all = TRUE)
+
+all_events1 <- all_events %>%
+  filter(Event %in% c("Release", "Recapture and Release")) %>%
+  distinct(TAG, .keep_all =TRUE)
+
+#gets freq table of how much each one occurs
+allevents1_table <- data.frame(table(all_events1$TAG))
+
+Release1_table <- data.frame(table(Release1$TAG))
+
+differences <- anti_join(all_events1, Release1, by = c("TAG","Event"))
+
+#trying to see where differences are in main all events dataframe
+testevents <- read_csv("allevents2.csv", col_types = cols(.default = "?", TAG = "c", UTM_X = "c", UTM_Y = "c"))
+#c("TcccnncDc")
+x <- anti_join(all_events, testevents)
+                         
+u_tags <- data.frame(unique(x$TAG))
+events_list <- unique(all_events$Event)
+species_list <- unique(all_events$Species)
+release_site_list <- unique(all_events$ReleaseSite)
+
+y <- x %>%
+  filter(Datetime >= "2020-08-01" & Datetime <= "2021-12-14",
+        Event %in% events_list,
+        Species %in% species_list,
+        ReleaseSite %in% release_site_list) %>%
+  select(-Date)
+
+all_events1 <- all_events %>%
+  replace_na(list(Species = "No Info", ReleaseSite = "No Info"))
+
+  #replace(is.na("Species"), "No Info")
+
+
+all_detections12 <- df_list$All_Detections_Release
+
+all_detections12 %>%
+  filter(is.na(Species))
+

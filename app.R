@@ -17,7 +17,7 @@ library(bslib)
 # Data Read Ins -----------------------------------------------------------
 
 
-
+# if column names change in any of these read-ins, might require some modification to code to get them to combine
 Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
 Mobile <- read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
@@ -35,6 +35,7 @@ df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release=
 All_Detections_1 <- df_list$All_Detections_Release
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
+all_events <- df_list$All_Events
 
 Enc_release_data <- df_list$ENC_Release2 %>%
     mutate(Date = ifelse(str_detect(Date, "/"),
@@ -83,8 +84,10 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(
                           dateRangeInput("drangeinput1", "Select a Date Range:",
-                                         start = "2020-09-03", 
-                                         end = max(df_list$All_Detections_Release$Scan_DateTime)), #end of date range input
+                                         #was accidnetly omitting events from the allevents tab bc the earliest release date is 2020-09-01
+                                         #earliest detection was 2020-09-03, which was what it was set at before
+                                         start = "2020-08-01", 
+                                         end = max(df_list$All_Events$Datetime)), #end of date range input
                           actionButton("button1", label = "Render Table")
                           ),
                        
@@ -110,14 +113,14 @@ ui <- fluidPage(
              tabPanel("Encounter Histories",
                       sidebarLayout(
                         sidebarPanel(
-                          #textInput("textinput1", "Filter by Tag"),
+                          textInput("textinput1", "Filter by Tag"),
                           dateRangeInput("drangeinput2", "Select a Date Range:",
-                                         start = "2020-09-03", 
-                                         end = max(df_list$All_Detections_Release$Scan_DateTime)), #end of date range input
+                                         start = "2020-08-01", 
+                                         end = max(df_list$All_Events$Date) + 1), #end of date range input
                           pickerInput(inputId = "picker1",
-                                      label = "Select Antennas",
-                                      choices = unique(df_list$All_Detections_Release$Site_Code),
-                                      selected = unique(df_list$All_Detections_Release$Site_Code),
+                                      label = "Select Event",
+                                      choices = unique(df_list$All_Events$Event),
+                                      selected = unique(df_list$All_Events$Event),
                                       multiple = TRUE,
                                       options = list(
                                         `actions-box` = TRUE #this makes the "select/deselect all" option
@@ -127,8 +130,8 @@ ui <- fluidPage(
                           
                           pickerInput(inputId = "picker2",
                                       label = "Select Fish Species:",
-                                      choices = unique(df_list$All_Detections_Release$Species),
-                                      selected = unique(df_list$All_Detections_Release$Species),
+                                      choices = unique(df_list$All_Events$Species),
+                                      selected = unique(df_list$All_Events$Species),
                                       multiple = TRUE,
                                       options = list(
                                         `actions-box` = TRUE #this makes the "select/deselect all" option
@@ -138,8 +141,8 @@ ui <- fluidPage(
                           
                           pickerInput(inputId = "picker3",
                                       label = "Select Release Site:",
-                                      choices = unique(df_list$All_Detections_Release$ReleaseSite),
-                                      selected = unique(df_list$All_Detections_Release$ReleaseSite),
+                                      choices = unique(df_list$All_Events$ReleaseSite),
+                                      selected = unique(df_list$All_Events$ReleaseSite),
                                       multiple = TRUE,
                                       options = list(
                                         `actions-box` = TRUE #this makes the "select/deselect all" option
@@ -162,7 +165,9 @@ ui <- fluidPage(
                           tabPanel("Encounter Release History",
                                    withSpinner(DT::dataTableOutput("enc_release1"))),
                           tabPanel("All Events",
-                                   withSpinner(DT::dataTableOutput("allevents1")))
+                                   downloadButton(outputId = "download1", label = "Save datafile"),
+                                   withSpinner(DT::dataTableOutput("allevents1"))
+                                   ) #end of tabpanel
                           
                           
                           )#end of encounter histories tabset panel within mainPanel
@@ -217,19 +222,35 @@ server <- function(input, output, session) {
     #i guess reactive ({}) makes it so you can make multiple expressions within a reactive context whereas reactive() can only do 1
     enc_hist_data_list <- eventReactive(input$button2,{
         
+        #req(input$textinput1)
       
       
         all_det_filtered <- df_list$All_Detections_Release %>%
             #unique(mtcars[,input$choose_columns])distinct(c(input$picker3)) %>%
-            filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
+            filter(
+              #TAG %in% c(input$textinput1),
+              Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
                    Species %in% input$picker2,
                    ReleaseSite %in% input$picker3
-                   ) %>%
-          select(-Scan_Date)
+                   ) 
         
+        #all events
+        all_events_filtered <- df_list$All_Events  %>%
+          filter(
+            
+            #TAG %in% c(input$textinput1),
+            Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+                  Event %in% input$picker1,
+                  Species %in% input$picker2,
+                 ReleaseSite %in% input$picker3
+          ) 
+        
+
         Enc_release_data_filtered <- Enc_release_data %>%
-            filter(Species %in% input$picker2,
+            filter(
+              #TAG %in% c(input$textinput1),
+              Species %in% input$picker2,
                    ReleaseSite %in% input$picker3)
         
         # error below solved because I wasn't using the correct variable names for each dataset
@@ -244,8 +265,14 @@ server <- function(input, output, session) {
             filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
                    Species %in% input$picker2,
-                   ReleaseSite %in% input$picker3) %>%
-          select(-Scan_DateTime)
+                   ReleaseSite %in% input$picker3) 
+        
+        all_events_filtered <- df_list$All_Events %>%
+          filter(Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+                 Event %in% input$picker1,
+                 Species %in% input$picker2,
+                 ReleaseSite %in% input$picker3) %>%
+          distinct(TAG, Event, Date, .keep_all = TRUE) 
         
         
     }
@@ -259,14 +286,21 @@ server <- function(input, output, session) {
             filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
                    Site_Code %in% input$picker1,
                    Species %in% input$picker2,
+                   ReleaseSite %in% input$picker3) 
+          
+          all_events_filtered <- df_list$All_Events %>%
+            filter(Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+                   Event %in% input$picker1,
+                   Species %in% input$picker2,
                    ReleaseSite %in% input$picker3) %>%
-            select(-Scan_Date)
+            #need to have distinct() at the end of the expression
+            distinct(TAG, .keep_all = TRUE) 
         }
 
         enc_hist_d_list <- list(
             "all_det_data" = all_det_filtered,
             "enc_release_data" = Enc_release_data_filtered,
-            "allevents_data" = df_list$All_Events
+            "allevents_data" = all_events_filtered
         )
         
         return(enc_hist_d_list)
@@ -379,6 +413,19 @@ server <- function(input, output, session) {
         language = list(emptyTable = "Enter inputs and press Render Table")
       ) #end of options list
       
+    )
+    
+    output$download1 <- downloadHandler(
+      filename = 
+        function() {
+          "allevents.csv"
+        }
+      ,
+      content = function(file) {
+        write_csv(enc_hist_data_list()$allevents_data, file)
+        
+        
+      }
     )
 }
 

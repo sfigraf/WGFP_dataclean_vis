@@ -32,7 +32,6 @@ source("WGFP_EncounterHistoriesFunction.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
 
-All_Detections_1 <- df_list$All_Detections_Release
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
 all_events <- df_list$All_Events
@@ -41,7 +40,7 @@ Enc_release_data <- df_list$ENC_Release2 %>%
     mutate(Date = ifelse(str_detect(Date, "/"),
                          as.character(mdy(Date)),
                          Date))
-  
+most_recent_date <- max(df_list$All_Events$Date)  
 
 #want to put this in the function when ready
 # Enc_release_data <- ENC_Release2_1 %>%
@@ -87,7 +86,7 @@ ui <- fluidPage(
                                          #was accidnetly omitting events from the allevents tab bc the earliest release date is 2020-09-01
                                          #earliest detection was 2020-09-03, which was what it was set at before
                                          start = "2020-08-01", 
-                                         end = max(df_list$All_Events$Datetime)), #end of date range input
+                                         end = max(df_list$All_Events$Date)+1), #end of date range input
                           actionButton("button1", label = "Render Table")
                           ),
                        
@@ -130,7 +129,7 @@ ui <- fluidPage(
                           
                           pickerInput(inputId = "picker2",
                                       label = "Select Fish Species:",
-                                      choices = unique(df_list$All_Events$Species),
+                                      choices = sort(unique(df_list$All_Events$Species)),
                                       selected = unique(df_list$All_Events$Species),
                                       multiple = TRUE,
                                       options = list(
@@ -141,7 +140,7 @@ ui <- fluidPage(
                           
                           pickerInput(inputId = "picker3",
                                       label = "Select Release Site:",
-                                      choices = unique(df_list$All_Events$ReleaseSite),
+                                      choices = sort(unique(df_list$All_Events$ReleaseSite)),
                                       selected = unique(df_list$All_Events$ReleaseSite),
                                       multiple = TRUE,
                                       options = list(
@@ -154,18 +153,18 @@ ui <- fluidPage(
                           ), #end of picker 3 input
                           
                           checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
-                          checkboxInput("checkbox2", "Remove Duplicate TAGs"),
+                          checkboxInput("checkbox2", "Remove Duplicate TAGs: doesn't work with TAG filter"), #deliberate decision not to add another if statement to have it actually work because it doesn't make sense you would use both at the same time
                           #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
                           #submitButton("Update inputs", icon("sync"))
                           actionButton("button2", label = "Render Table")
                         ), #end of sidebar 
                         mainPanel(tabsetPanel(
-                          tabPanel("All Detections",
-                                   withSpinner(DT::dataTableOutput("alldetections1"))),
+                          
                           tabPanel("Encounter Release History",
+                                   downloadButton(outputId = "download1", label = "Save Enc Hist as CSV"),
                                    withSpinner(DT::dataTableOutput("enc_release1"))),
                           tabPanel("All Events",
-                                   downloadButton(outputId = "download1", label = "Save datafile"),
+                                   downloadButton(outputId = "download2", label = "Save All Events as CSV"),
                                    withSpinner(DT::dataTableOutput("allevents1"))
                                    ) #end of tabpanel
                           
@@ -222,29 +221,56 @@ server <- function(input, output, session) {
     #i guess reactive ({}) makes it so you can make multiple expressions within a reactive context whereas reactive() can only do 1
     enc_hist_data_list <- eventReactive(input$button2,{
         
-        #req(input$textinput1)
+        #input$textinput1
       
+      # all_events_filtered <- df_list$All_Events  %>%
+      #   filter(
+      #     #{if (input$textinput1 != "") TAG == input$textinput1},
+      #     
+      #     TAG %in% c(input$textinput1),
+      #     Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+      #     Event %in% input$picker1,
+      #     Species %in% input$picker2,
+      #     ReleaseSite %in% input$picker3
+      #   ) 
+      # # %>%
+      # #   {if (input$textinput1 != "") filter(df_list$All_Events$TAG == input$textinput1)}
+      # 
       
-        all_det_filtered <- df_list$All_Detections_Release %>%
-            #unique(mtcars[,input$choose_columns])distinct(c(input$picker3)) %>%
-            filter(
-              #TAG %in% c(input$textinput1),
-              Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
-                   Site_Code %in% input$picker1,
-                   Species %in% input$picker2,
-                   ReleaseSite %in% input$picker3
-                   ) 
-        
+      if(input$textinput1 !=''){
         #all events
         all_events_filtered <- df_list$All_Events  %>%
           filter(
-            
-            #TAG %in% c(input$textinput1),
+
+            TAG %in% c(input$textinput1),
             Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
-                  Event %in% input$picker1,
-                  Species %in% input$picker2,
-                 ReleaseSite %in% input$picker3
-          ) 
+            Event %in% input$picker1,
+            Species %in% input$picker2,
+            ReleaseSite %in% input$picker3
+          )
+        
+        Enc_release_data_filtered <- Enc_release_data %>%
+          filter(
+            TAG %in% c(input$textinput1),
+            Species %in% input$picker2,
+            ReleaseSite %in% input$picker3)
+        
+      } else {
+        all_events_filtered <- df_list$All_Events  %>%
+          filter(
+            
+            Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+            Event %in% input$picker1,
+            Species %in% input$picker2,
+            ReleaseSite %in% input$picker3
+          )
+        
+        Enc_release_data_filtered <- Enc_release_data %>%
+          filter(
+            Species %in% input$picker2,
+            ReleaseSite %in% input$picker3)
+      }
+        
         
 
         Enc_release_data_filtered <- Enc_release_data %>%
@@ -258,17 +284,14 @@ server <- function(input, output, session) {
         # x `Scan_Date` not found in `.data` 
       ### Filtering for TAG, SIte Code, and Day  
         
-    if (input$checkbox1 == TRUE & input$checkbox2 == FALSE) {
-        
-        all_det_filtered <- df_list$All_Detections_Release %>%
-            distinct(TAG, Site_Code, Scan_Date, .keep_all = TRUE) %>%
-            filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
-                   Site_Code %in% input$picker1,
-                   Species %in% input$picker2,
-                   ReleaseSite %in% input$picker3) 
+        #if there is a tag input along with the first box checked
+    if (input$checkbox1 == TRUE & input$checkbox2 == FALSE & input$textinput1 !='') {
         
         all_events_filtered <- df_list$All_Events %>%
-          filter(Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+          
+          filter(
+            TAG == input$textinput1,
+            Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
                  Event %in% input$picker1,
                  Species %in% input$picker2,
                  ReleaseSite %in% input$picker3) %>%
@@ -276,20 +299,29 @@ server <- function(input, output, session) {
         
         
     }
-        #need new selective picker to select what to do distinct() on
-        
+        #if there isn't a tag input along with first box checked
+        if (input$checkbox1 == TRUE & input$checkbox2 == FALSE & input$textinput1 =='') {
+          
+          all_events_filtered <- df_list$All_Events %>%
+            
+            filter(
+              Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+              Event %in% input$picker1,
+              Species %in% input$picker2,
+              ReleaseSite %in% input$picker3) %>%
+            distinct(TAG, Event, Date, .keep_all = TRUE) 
+          
+          
+        }
         
         if (input$checkbox2 == TRUE) {
           
-          all_det_filtered <- df_list$All_Detections_Release %>%
-            distinct(TAG, .keep_all = TRUE) %>%
-            filter(Scan_DateTime >= input$drangeinput2[1] & Scan_DateTime <= input$drangeinput2[2],
-                   Site_Code %in% input$picker1,
-                   Species %in% input$picker2,
-                   ReleaseSite %in% input$picker3) 
+          
           
           all_events_filtered <- df_list$All_Events %>%
-            filter(Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+            filter(
+              #TAG == input$textinput1,
+                    Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
                    Event %in% input$picker1,
                    Species %in% input$picker2,
                    ReleaseSite %in% input$picker3) %>%
@@ -298,7 +330,6 @@ server <- function(input, output, session) {
         }
 
         enc_hist_d_list <- list(
-            "all_det_data" = all_det_filtered,
             "enc_release_data" = Enc_release_data_filtered,
             "allevents_data" = all_events_filtered
         )
@@ -367,23 +398,6 @@ server <- function(input, output, session) {
     )
     
     # Dt 
-    output$alldetections1 <- renderDataTable(
-      
-      enc_hist_data_list()$all_det_data,
-        rownames = FALSE,
-        #extensions = c('Buttons'),
-        #for slider filter instead of text input
-        filter = 'top',
-        options = list(
-          pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-          
-          dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
-          language = list(emptyTable = "Enter inputs and press Render Table")
-          
-          #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
-        )
-    )
-    
     
     output$enc_release1 <- renderDataTable(
         
@@ -415,10 +429,27 @@ server <- function(input, output, session) {
       
     )
     
+
+# Download Handlers -------------------------------------------------------
+
+    
     output$download1 <- downloadHandler(
       filename = 
         function() {
-          "allevents.csv"
+          paste0("ReleaseEncounters_",most_recent_date,".csv")
+        }
+      ,
+      content = function(file) {
+        write_csv(enc_hist_data_list()$enc_release_data, file)
+        
+        
+      }
+    ) #end of download2
+    
+    output$download2 <- downloadHandler(
+      filename = 
+        function() {
+          paste0("allevents_",most_recent_date,".csv")
         }
       ,
       content = function(file) {
@@ -426,7 +457,7 @@ server <- function(input, output, session) {
         
         
       }
-    )
+    ) #end of download2
 }
 
 # Run the application 

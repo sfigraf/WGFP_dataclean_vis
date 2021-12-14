@@ -168,21 +168,21 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
 ### end of recaps and release joining section
 ### start of potentially now superfluous all_detecttions_release section  
   
-  Release1 <- Release %>%
-    rename(TAG = TagID)
-  
-  #full join retains tags with no release info, left join will get only the tags that have release info
-  
-  #All_Detections_2 <- full_join(All_detections, Release1, by = "TAG")
-  All_Detections_2 <- left_join(All_detections, Release1, by = "TAG")
-  
-  All_Detections_Release <- All_Detections_2 %>%
-    select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X.x, UTM_Y.x, ReleaseSite, Date, Species, Length, Weight ) %>%
-    rename(UTM_X = UTM_X.x,
-           UTM_Y = UTM_Y.x,
-           Release_Date = Date) %>%
-    mutate(Release_Date = mdy(Release_Date))
-    
+  # Release1 <- Release %>%
+  #   rename(TAG = TagID)
+  # 
+  # #full join retains tags with no release info, left join will get only the tags that have release info
+  # 
+  # #All_Detections_2 <- full_join(All_detections, Release1, by = "TAG")
+  # All_Detections_2 <- left_join(All_detections, Release1, by = "TAG")
+  # 
+  # All_Detections_Release <- All_Detections_2 %>%
+  #   select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X.x, UTM_Y.x, ReleaseSite, Date, Species, Length, Weight ) %>%
+  #   rename(UTM_X = UTM_X.x,
+  #          UTM_Y = UTM_Y.x,
+  #          Release_Date = Date) %>%
+  #   mutate(Release_Date = mdy(Release_Date))
+  #   
   
   ### Create Encounter Histories ###
   
@@ -261,7 +261,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            Mobile = (M1_n > 0 | M2_n >0)) %>%
     filter(!ReleaseSite %in% 0)
   
-  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections_Release" = All_Detections_Release, "All_Detections" = All_detections, 
+  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_detections, 
                   "All_Events" = filled_in_release_rows_condensed, "Unknown_Tags" = unknown_tags)
   return(df_list)
 }

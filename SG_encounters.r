@@ -820,3 +820,7 @@ all_detections12 <- df_list$All_Detections_Release
 all_detections12 %>%
   filter(is.na(Species))
 
+sort(unique(df_list$All_Events$ReleaseSite))
+
+x <- df_list$ENC_Release2 %>%
+  filter(TAG == "226001581749")

@@ -824,3 +824,90 @@ sort(unique(df_list$All_Events$ReleaseSite))
 
 x <- df_list$ENC_Release2 %>%
   filter(TAG == "226001581749")
+
+### incorporating recaps into enc_releases file
+all_enc12 <- recaps_detections %>%
+  count(TAG, Event, name = "Encounters") 
+
+all_enc12 <- pivot_wider(data = all_enc12, id_cols = TAG, names_from = Event, values_from = Encounters)
+
+x <- all_enc12 %>%
+  replace_na(list(Species = "No Info", ReleaseSite = "No Info"))
+
+#all_enc12[is.na(all_enc12)]=0
+
+ENC_ALL <- all_enc12 %>%
+  rename(RB1_n = RB1,
+         RB2_n = RB2,
+         HP3_n = HP3,
+         HP4_n = HP4,
+         CF5_n = CF5,
+         CF6_n = CF6,
+         M1_n = M1,
+         M2_n = M2,
+         B3_n = B3,
+         B4_n = B4,
+         Recap_n = Recapture
+  ) %>%
+  select(TAG, RB1_n,RB2_n,HP3_n, HP4_n, CF5_n, CF6_n, M1_n, M2_n, B3_n, B4_n, Recap_n)
+
+
+#### Merge Release data ###
+Release1 <- Release %>%
+  rename(TAG = TagID) %>%
+  mutate(TAG = str_trim(TAG)) %>%
+  replace_na(list(Species = "No Info", ReleaseSite = "No Info")) #replaced species and releasesite to follow the same convention as AllEvents
+
+# was geting a massive dataframe because the Release df is called TAGid not TAG.
+#need to actually join on full join not merge
+ENC_Release <- full_join(Release1, ENC_ALL,  by = "TAG")
+#gets tag list that wasn't in release file
+x <- ENC_Release %>%
+  filter(is.na(ReleaseSite))
+
+unknown_tags <- x$TAG
+#ENC_Release11$TAG[3433:nrow(ENC_Release11)]
+#ENC_Release= merge(Release,ENC_ALL, all=TRUE)
+ENC_Release[is.na(ENC_Release)]=0
+
+#### Make 1 or 0 for encounter history rather than counts ###
+#gets df with TF of whether a fish was detected at a antenna
+ENC_Release1 <- ENC_Release %>%
+  mutate(RB1 = (RB1_n >0),
+         RB2 = (RB2_n >0),
+         HP3 = (HP3_n >0),
+         HP4 = (HP4_n >0),
+         CF5 = (CF5_n >0),
+         CF6 = (CF6_n >0),
+         M1 = (M1_n >0),
+         M2 = (M2_n >0),
+         B3 = (B3_n >0),
+         B4 = (B4_n>0),
+         Recapture = (Recap_n > 0))
+  
+
+#summary stats of each antenna encounter
+#precariously built because Row numbers are used
+#but also has release data
+totalcols <- ncol(ENC_Release1)
+
+ENC_Release2 <- ENC_Release1 %>%
+  #counts number of TRUE across specified rows. negates subsequent lines of code -SG
+  mutate(
+    TotalEncounters = rowSums(ENC_Release1[(totalcols-10):totalcols] == TRUE),
+
+    TotalAntennas1 = rowSums(ENC_Release1[(totalcols-10):totalcols-1] == TRUE),
+         TotalStationary = rowSums(ENC_Release1[(totalcols-10):(totalcols-5)] == TRUE),
+         TotalMobile = rowSums(ENC_Release1[(totalcols-4):(totalcols-3)] == TRUE),
+         TotalBiomark = rowSums(ENC_Release1[(totalcols-2):totalcols-1] == TRUE),
+         TotalRB = rowSums(ENC_Release1[(totalcols-10):(totalcols-9)] == TRUE),
+         TotalHP = rowSums(ENC_Release1[(totalcols-8):(totalcols-7)] == TRUE),
+         TotalCf = rowSums(ENC_Release1[(totalcols-6):(totalcols-5)] == TRUE)
+  ) %>%
+  # just says if the fish was ever detected at these sites
+  mutate(RB = (RB1_n > 0 | RB2_n >0),
+         HP = (HP3_n > 0 | HP4_n >0),
+         CF = (CF5_n > 0 | CF6_n >0),
+         Biomark = (B3_n > 0 | B4_n >0),
+         Mobile = (M1_n > 0 | M2_n >0)) %>%
+  filter(!UTM_X %in% 0) #

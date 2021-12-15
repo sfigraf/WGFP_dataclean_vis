@@ -98,7 +98,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     rename(Scan_DateTime = datetime2) %>%
     select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
   
-### all detections and recaps and release
+### all detections and recaps and release "EVENTS" DF
   
   #getting timestamps in order and getting relevant columns
   Release1 <- Release %>%
@@ -132,13 +132,16 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
       DateTime = Scan_DateTime,
       Event = Site_Code) 
   
-  #gets a df with a event "Release" without columns filled in yet
-  all_detections_release <- bind_rows(All_Detections_1_merge, Release1)
+  ## 
   
+  
+  # this 
+  recaps_detections <- bind_rows(All_Detections_1_merge, recaps1)
+  
+  detections_release_recaps <- bind_rows(test, Release1)
   # bind rows vs left join; bind rows will make it so there is a "release" or "recapture" event and also make columns with relevant info
   
-  detections_release_recaps <- bind_rows(all_detections_release, recaps1)
-  
+
   #fills in release info so it is known at any row of detection
   filled_in_release_rows <- left_join(detections_release_recaps, Release1, by = c("TAG"))
   
@@ -184,13 +187,18 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   #   mutate(Release_Date = mdy(Release_Date))
   #   
   
+  
+  
   ### Create Encounter Histories ###
+  all_enc12 <- recaps_detections %>%
+    count(TAG, Event, name = "Encounters") 
   
-  all_enc12 <- All_detections %>%
-    count(TAG, Site_Code, name = "Encounters") 
+  all_enc12 <- pivot_wider(data = all_enc12, id_cols = TAG, names_from = Event, values_from = Encounters)
   
-  all_enc12 <- pivot_wider(data = all_enc12, id_cols = TAG, names_from = Site_Code, values_from = Encounters)
-  all_enc12[is.na(all_enc12)]=0
+  x <- all_enc12 %>%
+    replace_na(list(Species = "No Info", ReleaseSite = "No Info"))
+  
+  #all_enc12[is.na(all_enc12)]=0
   
   ENC_ALL <- all_enc12 %>%
     rename(RB1_n = RB1,
@@ -201,28 +209,29 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            CF6_n = CF6,
            M1_n = M1,
            M2_n = M2,
-           B1_n = B3,
-           B2_n = B4
+           B3_n = B3,
+           B4_n = B4,
+           Recap_n = Recapture
     ) %>%
-    select(TAG, RB1_n,RB2_n,HP3_n, HP4_n, CF5_n, CF6_n, M1_n, M2_n, B1_n, B2_n)
+    select(TAG, RB1_n,RB2_n,HP3_n, HP4_n, CF5_n, CF6_n, M1_n, M2_n, B3_n, B4_n, Recap_n)
   
   
   #### Merge Release data ###
-  Release <- Release %>%
+  Release1 <- Release %>%
     rename(TAG = TagID) %>%
-    mutate(TAG = str_trim(TAG))
-    
+    mutate(TAG = str_trim(TAG)) %>%
+    replace_na(list(Species = "No Info", ReleaseSite = "No Info")) #replaced species and releasesite to follow the same convention as AllEvents
+  
   # was geting a massive dataframe because the Release df is called TAGid not TAG.
   #need to actually join on full join not merge
-  ENC_Release <- full_join(Release, ENC_ALL,  by = "TAG")
+  ENC_Release <- full_join(Release1, ENC_ALL,  by = "TAG")
   #gets tag list that wasn't in release file
   x <- ENC_Release %>%
     filter(is.na(ReleaseSite))
   
   unknown_tags <- x$TAG
   #ENC_Release11$TAG[3433:nrow(ENC_Release11)]
-  #ENC_Release= merge(Release,ENC_ALL, all=TRUE)
-  ENC_Release[is.na(ENC_Release)]=0
+  ENC_Release[is.na(ENC_Release)]=0 #gets rest of the number count columns to 0 from NA
   
   #### Make 1 or 0 for encounter history rather than counts ###
   #gets df with TF of whether a fish was detected at a antenna
@@ -235,8 +244,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            CF6 = (CF6_n >0),
            M1 = (M1_n >0),
            M2 = (M2_n >0),
-           B1 = (B1_n >0),
-           B2 = (B2_n>0)) 
+           B3 = (B3_n >0),
+           B4 = (B4_n>0),
+           Recapture = (Recap_n > 0))
+  
   
   #summary stats of each antenna encounter
   #precariously built because Row numbers are used
@@ -244,22 +255,25 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   totalcols <- ncol(ENC_Release1)
   
   ENC_Release2 <- ENC_Release1 %>%
-    #counts number opf TRUE across specified rows. negates subsequent lines of code -SG
-    mutate(TotalAntennas1 = rowSums(ENC_Release1[(totalcols-9):totalcols] == TRUE),
-           TotalStationary = rowSums(ENC_Release1[(totalcols-9):(totalcols-4)] == TRUE),
-           TotalMobile = rowSums(ENC_Release1[(totalcols-3):(totalcols-2)] == TRUE),
-           TotalBiomark = rowSums(ENC_Release1[(totalcols-1):totalcols] == TRUE),
-           TotalRB = rowSums(ENC_Release1[(totalcols-9):(totalcols-8)] == TRUE),
-           TotalHP = rowSums(ENC_Release1[(totalcols-7):(totalcols-6)] == TRUE),
-           TotalCf = rowSums(ENC_Release1[(totalcols-5):(totalcols-4)] == TRUE)
-           ) %>%
+    #counts number of TRUE across specified rows. negates subsequent lines of code -SG
+    mutate(
+      TotalEncounters = rowSums(ENC_Release1[(totalcols-10):totalcols] == TRUE),
+      
+      TotalAntennas1 = rowSums(ENC_Release1[(totalcols-10):totalcols-1] == TRUE),
+      TotalStationary = rowSums(ENC_Release1[(totalcols-10):(totalcols-5)] == TRUE),
+      TotalMobile = rowSums(ENC_Release1[(totalcols-4):(totalcols-3)] == TRUE),
+      TotalBiomark = rowSums(ENC_Release1[(totalcols-2):totalcols-1] == TRUE),
+      TotalRB = rowSums(ENC_Release1[(totalcols-10):(totalcols-9)] == TRUE),
+      TotalHP = rowSums(ENC_Release1[(totalcols-8):(totalcols-7)] == TRUE),
+      TotalCf = rowSums(ENC_Release1[(totalcols-6):(totalcols-5)] == TRUE)
+    ) %>%
     # just says if the fish was ever detected at these sites
     mutate(RB = (RB1_n > 0 | RB2_n >0),
            HP = (HP3_n > 0 | HP4_n >0),
            CF = (CF5_n > 0 | CF6_n >0),
-           Biomark = (B1_n > 0 | B2_n >0),
+           Biomark = (B3_n > 0 | B4_n >0),
            Mobile = (M1_n > 0 | M2_n >0)) %>%
-    filter(!ReleaseSite %in% 0)
+    filter(!UTM_X %in% 0) # one way to filter out tags that don't have any sort of release data; usually if they're entered in release file then they have UTM's
   
   df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_detections, 
                   "All_Events" = filled_in_release_rows_condensed, "Unknown_Tags" = unknown_tags)

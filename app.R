@@ -154,9 +154,11 @@ ui <- fluidPage(
                           
                           checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
                           checkboxInput("checkbox2", "Remove Duplicate TAGs: doesn't work with TAG filter"), #deliberate decision not to add another if statement to have it actually work because it doesn't make sense you would use both at the same time
+                          actionButton("button3", label = "Render Table"),
+                          tags$hr(),
                           #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
                           #submitButton("Update inputs", icon("sync"))
-                          actionButton("button2", label = "Render Table")
+                          actionButton("button2", "Reset Filters")
                         ), #end of sidebar 
                         mainPanel(tabsetPanel(
                           
@@ -182,10 +184,43 @@ ui <- fluidPage(
 # Define server logic
 # Warning: Error in validate_session_object: object 'session' not found solved by adding session to the part up here
 server <- function(input, output, session) {
+  
+
+# Reset Filters Logic -----------------------------------------------------
+
+  
+  observeEvent(input$button2, {
+    
+    updateTextInput(session, "textinput1",
+                    value = "")
+    
+    updateDateRangeInput(session, "drangeinput2",
+                         start = "2020-08-01", 
+                         end = max(df_list$All_Events$Date) + 1)
+    
+    updatePickerInput(session, "picker1",
+                      selected = unique(df_list$All_Events$Event)
+    )
+    
+    updatePickerInput(session, "picker2",
+                      selected = unique(df_list$All_Events$Species)
+    )
+    
+    updatePickerInput(session, "picker3",
+                      selected = unique(df_list$All_Events$ReleaseSite)
+    )
+    
+    updateCheckboxInput(session, "checkbox1",
+                        value = NULL)
+    
+    updateCheckboxInput(session, "checkbox2",
+                        value = NULL)
+    
+  }) #end of reset 
     
 
 # Ind D Reactives ---------------------------------------------------------
-
+    
   
     indiv_datasets_list <- eventReactive(input$button1,{
       
@@ -219,24 +254,9 @@ server <- function(input, output, session) {
     
     #enc_releae_data wasn't registering bc i used reactive() instead of reactive ({}).
     #i guess reactive ({}) makes it so you can make multiple expressions within a reactive context whereas reactive() can only do 1
-    enc_hist_data_list <- eventReactive(input$button2,{
+    enc_hist_data_list <- eventReactive(input$button3,{
         
-        #input$textinput1
-      
-      # all_events_filtered <- df_list$All_Events  %>%
-      #   filter(
-      #     #{if (input$textinput1 != "") TAG == input$textinput1},
-      #     
-      #     TAG %in% c(input$textinput1),
-      #     Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
-      #     Event %in% input$picker1,
-      #     Species %in% input$picker2,
-      #     ReleaseSite %in% input$picker3
-      #   ) 
-      # # %>%
-      # #   {if (input$textinput1 != "") filter(df_list$All_Events$TAG == input$textinput1)}
-      # 
-      
+      # if the Tag filter is used or not 
       if(input$textinput1 !=''){
         #all events
         all_events_filtered <- df_list$All_Events  %>%
@@ -271,13 +291,6 @@ server <- function(input, output, session) {
             ReleaseSite %in% input$picker3)
       }
         
-        
-
-        Enc_release_data_filtered <- Enc_release_data %>%
-            filter(
-              #TAG %in% c(input$textinput1),
-              Species %in% input$picker2,
-                   ReleaseSite %in% input$picker3)
         
         # error below solved because I wasn't using the correct variable names for each dataset
         # x `Site_Code` not found in `.data`.

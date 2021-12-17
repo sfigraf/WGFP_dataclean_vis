@@ -156,7 +156,8 @@ Mobile2 <- Mobile %>%
 
 # Intervals ---------------------------------------------------------------
 
-All_detections <- df_list$All_Detections
+library(fishualize)
+All_events <- df_list$All_Events
 Enc_release_data <- df_list$ENC_Release2
 # x <- All_detections$Scan_Date
 # earliest_date <- min(x)
@@ -172,8 +173,8 @@ Enc_release_data <- df_list$ENC_Release2
 #ceiling rounds up to nearest integer larger than x. 
 #weeks_since_launch<- as.numeric(ceiling(difftime(max(x), min(x), units = "weeks")))
 ##Weeks
-All_detections_05 <- All_detections %>%
-  mutate(weeks_since = as.numeric(ceiling(difftime(Scan_Date, min(Scan_Date), units = "weeks")))
+all_events_05 <- All_events %>%
+  mutate(weeks_since = as.numeric(ceiling(difftime(Date, min(Date), units = "weeks")))
          )
 
 #unique tags by site and Day
@@ -184,24 +185,24 @@ All_detections_05 <- All_detections %>%
 # 
 # detections_and_species <- left_join(All_detections_05, spc_enc_only, by = "TAG")
 
-All_detections_05 %>%
-  count(Site_Code, Species, weeks_since) %>%
-  ggplot(aes(x = weeks_since, y = n, fill = Site_Code)) +
+All_events_05 %>%
+  count(Event, Species, weeks_since) %>%
+  ggplot(aes(x = weeks_since, y = n, fill = Event)) +
   geom_bar(stat = "identity") +
   theme_classic() +
   labs(title = "Weekly detections by Site")
 
-All_detections_05 %>%
-  count(Site_Code, Species) %>%
-  ggplot(aes(x = Species, y = n, fill = Site_Code)) +
+All_events_05 %>%
+  count(Event, Species) %>%
+  ggplot(aes(x = Species, y = n, fill = Event)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   theme_classic() +
   labs(title = "Raw Number of detections by Species and Site")
 
-All_detections_05 %>%
-  distinct(TAG, Site_Code, .keep_all = TRUE) %>%
-  count(Site_Code,Species) %>%
-  ggplot(aes(x = Site_Code, y = n, fill = Species)) +
+All_events_05 %>%
+  distinct(TAG, Event, .keep_all = TRUE) %>%
+  count(Event,Species) %>%
+  ggplot(aes(x = Event, y = n, fill = Species)) +
   geom_bar(stat = "identity") +
   theme_classic() +
   labs(title = "Species Detections by Site, Controlled by Day", subtitle = "A fish with a million detections on one day only registers once") +
@@ -221,24 +222,145 @@ library(rfishbase)
 dt <- rfishbase::species(gsub("_"," ", spp))
 
 ###Weeks since datawrangling
-All_detections_05 <- All_detections %>%
-  mutate(weeks_since = as.numeric(ceiling(difftime(Scan_Date, min(Scan_Date), units = "weeks")))
+All_events_05 <- All_events %>%
+  mutate(weeks_since = as.numeric(ceiling(difftime(Date, min(Date), units = "weeks")))
   )
 
-All_detections1 <- All_detections_05 %>%
-  distinct(TAG, Site_Code, weeks_since, .keep_all = TRUE)
+All_events_1 <- All_events_05 %>%
+  distinct(TAG, Event, weeks_since, .keep_all = TRUE)
 
-test_weeks <- pivot_wider(data = All_detections1, id_cols = TAG, names_from = weeks_since, values_from = Site_Code)
+All_events_weeks <- pivot_wider(data = All_events_1, id_cols = TAG, names_from = weeks_since, values_from = Event)
 
 ## Days
-All_detections_days <- All_detections %>%
-  mutate(days_since = as.numeric(ceiling(difftime(Scan_Date, min(Scan_Date), units = "days")))
+All_events_days <- All_events %>%
+  mutate(days_since = as.numeric(ceiling(difftime(Date, min(Date), units = "days")))
   )
 
-All_detections_days1 <- All_detections_days %>%
-  distinct(TAG, Site_Code, days_since, .keep_all = TRUE)
+All_events_days1 <- All_events_days %>%
+  distinct(TAG, Event, days_since, .keep_all = TRUE)
 
-test_days <- pivot_wider(data = All_detections_days1, id_cols = TAG, names_from = days_since, values_from = Site_Code)
+test_days <- pivot_wider(data = All_events_days1, id_cols = TAG, names_from = days_since, values_from = Event)
+
+
+single_tag <- All_events_days1 %>%
+  select(Date, Datetime,TAG,Event,ReleaseSite,RecaptureSite, days_since) %>%
+  filter(TAG %in% "230000224371") 
+
+all_tags <- All_events_days1 %>%
+  select(Date, Datetime,TAG,Event,ReleaseSite,RecaptureSite, days_since) 
+
+days <- data.frame(days_since = 1:455)
+
+x <- full_join(days, single_tag, by = "days_since")
+
+all_tags_combined <- full_join(days, all_tags, by = "days_since")
+
+x1 <- x %>%
+  group_by(days_since) %>%
+  filter(is.na(Datetime)|Datetime == max(Datetime)) %>% ## need to keep NA entries
+  ungroup() #need to ungroup in order to have "lag" work with making new column
+    # mutate(
+    #   #Date = Date,
+    #           Datetime = max(Datetime),
+    #           #TAG = TAG,
+    #           #Event = Event
+    #           )
+  #distinct(days_since, .keep_all = TRUE)
+    
+#these designations work for after a grouping by day and getting the event the fish was last at; 
+    # but if a fish used to be in state A, and missed a antenna and only was seen on HP3, that should be a US movement but as of now is classified as Upstream
+
+    
+x2 <- x1 %>%
+  mutate(State = case_when(Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "RF",
+                           Event == "RB1" ~ "H", #downstream movement
+                           Event == "RB2" ~ "G", #upstream movet
+                           Event == "HP3" ~ "J", #DS
+                           Event == "HP4" ~ "I", #US
+                           Event == "CF5" ~ "L", #DS
+                           Event == "CF6" ~ "K", #US
+                           Event == "B3" ~ "C",
+                           ))
+         #                   lag(State) == "RF" ~ "F",
+         #                   Event == "CF5" & lag(State) == "F" ~ "L")
+         #   #lag(days_since, n = 1L)
+         # ) #end of mutate
+
+# can try and pivot wider and 
+test_wider <- pivot_wider(data = x1, id_cols = TAG, names_from = days_since, values_from = Event)
+test_wider <- pivot_wider(data = data1, id_cols = TAG, names_from = days_since, values_from = Event)
+
+x3 <- x2 %>%
+  filter(days_since %in% (364:418))
+
+
+non_na_rows <- which(!is.na(x3$State))
+
+x3$Event[non_na_rows[1]]
+
+#create list assigning states values 
+#then can create simple if statement checking if value is > than other
+# but will still need to see which exact states those are 
+# because you have to know which state it resides
+
+length(non_na_rows)
+x3$State[3:30] <- "F"
+
+
+States_function <- function(x3) {
+  
+  non_na_rows <- which(!is.na(x3$State))
+  
+  
+  for (i in 1:length(non_na_rows)) {
+    if (x3$State[non_na_rows[i]] == "RF" & x3$State[non_na_rows[i+1]] == "L") {
+      x3$State[non_na_rows[i]+1:non_na_rows[i+1]-1]
+    } else {
+      print("False")
+    }
+  }
+}
+
+# rowShift <- function(x, shiftLen = 1L) {
+#   r <- (1L + shiftLen):(length(x) + shiftLen)
+#   r[r<1] <- NA
+#   return(x[r])
+# }
+    
+?all_tags_combined1 <- all_tags_combined %>%
+  group_by(days_since, TAG) %>%
+  filter(is.na(Datetime)|Datetime == max(Datetime)) ## need to keep NA entries
+# mutate(
+#   #Date = Date,
+#   Datetime = max(Datetime),
+#   TAG = TAG
+#   #Event = Event
+# )
+
+df <- tibble(
+  x = sample(10, 100, rep = TRUE),
+  y = sample(10, 100, rep = TRUE)
+)  
+
+y1 <- distinct(df, diff = abs(x - y))
+
+y1 <- distinct(starwars, across(contains("color")))
+starwars
+# function that will tell if something is upstream of something else with 2 inputs; returns True or False (or maybe upstream or downstream)
+#     or maybe could even by done with a list or df
+# if release site is "x" and event is "y", state is "z"
+# if no string detected in Event, continue putting previous state in
+# if string detected: 
+#   if return of upstream function is "upstream", put a upstream moving/"dummy" state
+#   if return is downstream, put the downstream moving state  for that specific spot 
+# if the string detected is a specific upstream moving state, then the next state is going to be another specific state because that's the only one it can be. 
+#     same with downstream
+
+# if there are 2 events on the same day, see which one occurred later in the day and take that one. 
+
+# once df is filled out, convert to wide format and bind rows with other df
+
+
 
 #just filtering days stuff
 x <- All_detections %>%

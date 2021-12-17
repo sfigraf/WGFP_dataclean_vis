@@ -24,9 +24,16 @@ Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
 Recaptures <- read.csv("WGFP_RecaptureData_Master.csv", colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
 
-  
+
+#  
 Mobile <- Mobile %>%
     mutate(MobileDate = as.character(mdy(MobileDate)))
+
+Release_05 <- Release %>%
+  mutate(Date = as.character(mdy(Date)))
+
+Recaptures_05 <- Recaptures %>%
+  mutate(Date = as.character(mdy(Date)))
 
 source("WGFP_EncounterHistoriesFunction.R")
 
@@ -55,7 +62,7 @@ rainbow_trout_pallette <- list(pink1 = "#E3BABBFF", olive_green1 = "#C4CFBFFF", 
 ui <- fluidPage(
   
   navbarPage(title = "WGFP Data Exploration",
-             theme = shinytheme("lumen"), #end of navbar page arguments; what follow is all inside it
+             theme = shinytheme("sandstone"), #end of navbar page arguments; what follow is all inside it
 
                
              #   bs_theme(
@@ -96,7 +103,11 @@ ui <- fluidPage(
                         tabPanel("Biomark",
                                  withSpinner(DT::dataTableOutput("biomark1"))),
                         tabPanel("Mobile",
-                                 withSpinner(DT::dataTableOutput("mobile1")))
+                                 withSpinner(DT::dataTableOutput("mobile1"))),
+                        tabPanel("Recaptures",
+                                 withSpinner(DT::dataTableOutput("recaps1"))),
+                        tabPanel("Release",
+                                 withSpinner(DT::dataTableOutput("release1")))
                         
                           ) #end of sidebarlayout: incldes sidebar panel and mainpanel
                         ) #end of individual datasets tabset panel
@@ -154,19 +165,24 @@ ui <- fluidPage(
                           
                           checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
                           checkboxInput("checkbox2", "Remove Duplicate TAGs: doesn't work with TAG filter"), #deliberate decision not to add another if statement to have it actually work because it doesn't make sense you would use both at the same time
-                          actionButton("button3", label = "Render Table"),
+                          actionButton("button2", "Reset Filters"),
                           tags$hr(),
                           #submit button is limited in scope, doesn't even have a input ID , but works for controlling literally all inputs
                           #submitButton("Update inputs", icon("sync"))
-                          actionButton("button2", "Reset Filters")
+                          
+                          actionButton("button3", label = "Render Table", width = "100%")
                         ), #end of sidebar 
                         mainPanel(tabsetPanel(
                           
                           tabPanel("Encounter Release History",
+                                   hr(),
                                    downloadButton(outputId = "download1", label = "Save Enc Hist as CSV"),
+                                   hr(),
                                    withSpinner(DT::dataTableOutput("enc_release1"))),
                           tabPanel("All Events",
+                                   hr(),
                                    downloadButton(outputId = "download2", label = "Save All Events as CSV"),
+                                   hr(),
                                    withSpinner(DT::dataTableOutput("allevents1"))
                                    ) #end of tabpanel
                           
@@ -236,10 +252,19 @@ server <- function(input, output, session) {
       mobile_filtered <- Mobile %>%
         filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
       
+      recaps_filtered <- Recaptures_05 %>%
+        filter(Date >= input$drangeinput1[1] & Date <= input$drangeinput1[2])
+      
+      release_filtered <- Release_05 %>%
+        filter(Date >= input$drangeinput1[1] & Date <= input$drangeinput1[2])
+      
+      
       indiv_d_list <- list(
         "stationarycleandata" = stationary_filtered,
         "biomarkdata" = biomark_filtered,
-        "mobiledata" = mobile_filtered
+        "mobiledata" = mobile_filtered,
+        "recapdata" = recaps_filtered,
+        "releasedata" = release_filtered
         
       )
       
@@ -408,6 +433,38 @@ server <- function(input, output, session) {
           
           #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
         )
+    )
+    
+    output$recaps1 <- renderDataTable(
+      
+      indiv_datasets_list()$recapdata,
+      rownames = FALSE,
+      #extensions = c('Buttons'),
+      #for slider filter instead of text input
+      filter = 'top',
+      options = list(
+        pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+        dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+        language = list(emptyTable = "Enter inputs and press Render Table")
+        
+        #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+      )
+    )
+    
+    output$release1 <- renderDataTable(
+      
+      indiv_datasets_list()$releasedata,
+      rownames = FALSE,
+      #extensions = c('Buttons'),
+      #for slider filter instead of text input
+      filter = 'top',
+      options = list(
+        pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+        dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+        language = list(emptyTable = "Enter inputs and press Render Table")
+        
+        #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+      )
     )
     
     # Dt 

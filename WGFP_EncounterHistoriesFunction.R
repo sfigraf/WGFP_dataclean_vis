@@ -138,7 +138,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   # this 
   recaps_detections <- bind_rows(All_Detections_1_merge, recaps1)
   
-  detections_release_recaps <- bind_rows(test, Release1)
+  detections_release_recaps <- bind_rows(recaps_detections, Release1)
   # bind rows vs left join; bind rows will make it so there is a "release" or "recapture" event and also make columns with relevant info
   
 

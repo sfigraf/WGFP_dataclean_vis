@@ -256,13 +256,14 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   
   ENC_Release2 <- ENC_Release1 %>%
     #counts number of TRUE across specified rows. negates subsequent lines of code -SG
+    # need to have parentheses (totalcols-1) that's why i was getting bad numbers on biomark T/F initially
     mutate(
       TotalEncounters = rowSums(ENC_Release1[(totalcols-10):totalcols] == TRUE),
       
-      TotalAntennas1 = rowSums(ENC_Release1[(totalcols-10):totalcols-1] == TRUE),
+      TotalAntennas1 = rowSums(ENC_Release1[(totalcols-10):(totalcols-1)] == TRUE),
       TotalStationary = rowSums(ENC_Release1[(totalcols-10):(totalcols-5)] == TRUE),
       TotalMobile = rowSums(ENC_Release1[(totalcols-4):(totalcols-3)] == TRUE),
-      TotalBiomark = rowSums(ENC_Release1[(totalcols-2):totalcols-1] == TRUE),
+      TotalBiomark = rowSums(ENC_Release1[(totalcols-2):(totalcols-1)] == TRUE),
       TotalRB = rowSums(ENC_Release1[(totalcols-10):(totalcols-9)] == TRUE),
       TotalHP = rowSums(ENC_Release1[(totalcols-8):(totalcols-7)] == TRUE),
       TotalCf = rowSums(ENC_Release1[(totalcols-6):(totalcols-5)] == TRUE)

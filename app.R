@@ -163,7 +163,7 @@ ui <- fluidPage(
                                       
                           ), #end of picker 3 input
                           
-                          checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Sites"),
+                          checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Events"),
                           checkboxInput("checkbox2", "Remove Duplicate TAGs: doesn't work with TAG filter"), #deliberate decision not to add another if statement to have it actually work because it doesn't make sense you would use both at the same time
                           actionButton("button2", "Reset Filters"),
                           tags$hr(),
@@ -176,12 +176,12 @@ ui <- fluidPage(
                           
                           tabPanel("Encounter Release History",
                                    hr(),
-                                   downloadButton(outputId = "download1", label = "Save Enc Hist as CSV"),
+                                   downloadButton(outputId = "download1", label = "Save this data as CSV"),
                                    hr(),
                                    withSpinner(DT::dataTableOutput("enc_release1"))),
                           tabPanel("All Events",
                                    hr(),
-                                   downloadButton(outputId = "download2", label = "Save All Events as CSV"),
+                                   downloadButton(outputId = "download2", label = "Save this data as CSV"),
                                    hr(),
                                    withSpinner(DT::dataTableOutput("allevents1"))
                                    ) #end of tabpanel
@@ -333,7 +333,14 @@ server <- function(input, output, session) {
                  Event %in% input$picker1,
                  Species %in% input$picker2,
                  ReleaseSite %in% input$picker3) %>%
-          distinct(TAG, Event, Date, .keep_all = TRUE) 
+          group_by(Date) %>%
+          mutate(first_last = case_when(Datetime == min(Datetime) ~ "First_of_day",
+                                        Datetime == max(Datetime) ~ "Last_of_day",
+                                        Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0")
+          ) %>%
+          ungroup() %>%
+          distinct(TAG, Event, Date, first_last, .keep_all = TRUE) %>%
+          select(-first_last)
         
         
     }
@@ -347,7 +354,15 @@ server <- function(input, output, session) {
               Event %in% input$picker1,
               Species %in% input$picker2,
               ReleaseSite %in% input$picker3) %>%
-            distinct(TAG, Event, Date, .keep_all = TRUE) 
+            #this part is for making sure the sequence of events will make sense
+            group_by(Date) %>%
+            mutate(first_last = case_when(Datetime == min(Datetime) ~ "First_of_day",
+                                          Datetime == max(Datetime) ~ "Last_of_day",
+                                          Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0")
+            ) %>%
+            ungroup() %>%
+            distinct(TAG, Event, Date, first_last, .keep_all = TRUE) %>%
+            select(-first_last) 
           
           
         }

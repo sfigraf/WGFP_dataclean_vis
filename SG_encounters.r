@@ -2,6 +2,14 @@ library(tidyverse)
 library(readxl)
 library(lubridate)
 library(fishualize)
+library(randomcoloR)
+library(ColorPalette)
+
+start_color <- randomColor()
+
+comp_cols <- c(start_color, 
+               complementColors(start_color, 5))
+tetra_cols <- c(start_color, tetradicColors(start_color, 5))
 #library(threadr) #needed for period to string function
 
 
@@ -232,9 +240,14 @@ All_events_1 <- All_events_05 %>%
 All_events_weeks <- pivot_wider(data = All_events_1, id_cols = TAG, names_from = weeks_since, values_from = Event)
 
 ## Days
+All_events <- df_list$All_Events
+
 All_events_days <- All_events %>%
   mutate(days_since = as.numeric(ceiling(difftime(Date, min(Date), units = "days")))
   )
+
+test <- All_events_days %>%
+  filter(TAG %in% c("230000224371"))
 
 All_events_days1 <- All_events_days %>%
   distinct(TAG, Event, days_since, .keep_all = TRUE)
@@ -272,7 +285,7 @@ x1 <- x %>%
 
     
 x2 <- x1 %>%
-  mutate(State = case_when(Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "RF",
+  mutate(State = case_when(Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "F",
                            Event == "RB1" ~ "H", #downstream movement
                            Event == "RB2" ~ "G", #upstream movet
                            Event == "HP3" ~ "J", #DS
@@ -290,8 +303,6 @@ x2 <- x1 %>%
 test_wider <- pivot_wider(data = x1, id_cols = TAG, names_from = days_since, values_from = Event)
 test_wider <- pivot_wider(data = data1, id_cols = TAG, names_from = days_since, values_from = Event)
 
-x3 <- x2 %>%
-  filter(days_since %in% (364:418))
 
 
 non_na_rows <- which(!is.na(x3$State))
@@ -302,24 +313,56 @@ x3$Event[non_na_rows[1]]
 #then can create simple if statement checking if value is > than other
 # but will still need to see which exact states those are 
 # because you have to know which state it resides
+x3 <- x2 %>%
+  filter(days_since %in% (364:418))
 
 length(non_na_rows)
-x3$State[3:30] <- "F"
+#x3$State[3:30] <- 0
+x3$State[(non_na_rows[1]+1):(non_na_rows[1+1]-1)] <- 0
 
-
+#x3 is a df where there is only 1 event per days_since
+#now that I know you only need 0's in between, makes it easier
 States_function <- function(x3) {
   
+  #getting a days df to bind on
+  days1 <- data.frame(days_since = 1:455, TAG = rep(NA, 455), State = rep(NA, 455))
+  days2<- pivot_wider(data = days1, id_cols = TAG, names_from = days_since, values_from = State)
+  # gets a list of which rows aren't NA in the State column
   non_na_rows <- which(!is.na(x3$State))
+  
+  #replaces the NA entries in x3$TAG with the tag number. needed for row binding with TAG column later
+  #works for now because there's only 1 tag in the df used (x3)
+  #tag1 <- unique(x3$TAG)[2]
+  x3 <- x3 %>%
+    replace_na(list(TAG = unique(x3$TAG)[2]))
   
   
   for (i in 1:length(non_na_rows)) {
-    if (x3$State[non_na_rows[i]] == "RF" & x3$State[non_na_rows[i+1]] == "L") {
-      x3$State[non_na_rows[i]+1:non_na_rows[i+1]-1]
-    } else {
-      print("False")
+    if (x3$State[non_na_rows[i]] == "F" & x3$State[non_na_rows[i+1]] == "L") {
+      x3$State[(non_na_rows[i]+1):(non_na_rows[i+1]-1)] <- 0
+      #x3$State[non_na_rows[i]+1:non_na_rows[i+1]-1]
+    } 
+    
+    # if (x3$State[non_na_rows[i]] == "RF" & x3$State[non_na_rows[i+1]] == "L") {
+    #   x3$State[non_na_rows[i]+1:non_na_rows[i+1]-1]
+    # } 
+    # 
+    else {
+      #print("False")
     }
   }
+  
+  new_df <- pivot_wider(data = x3, id_cols = TAG, names_from = days_since, values_from = State) 
+  
+  new_df1 <- bind_rows(days2, new_df)
+  return(new_df1)
+  
 }
+
+y <- States_function(x3)
+
+y1 <- y %>%
+  select(TAG, 360:417)
 
 # rowShift <- function(x, shiftLen = 1L) {
 #   r <- (1L + shiftLen):(length(x) + shiftLen)
@@ -327,9 +370,22 @@ States_function <- function(x3) {
 #   return(x[r])
 # }
     
-?all_tags_combined1 <- all_tags_combined %>%
+all_tags_combined1 <- all_tags_combined %>%
   group_by(days_since, TAG) %>%
   filter(is.na(Datetime)|Datetime == max(Datetime)) ## need to keep NA entries
+
+all_tags_combined2 <- all_tags_combined1 %>%
+  mutate(State = case_when(Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "F",
+                           Event == "RB1" ~ "H", #downstream movement
+                           Event == "RB2" ~ "G", #upstream movet
+                           Event == "HP3" ~ "J", #DS
+                           Event == "HP4" ~ "I", #US
+                           Event == "CF5" ~ "L", #DS
+                           Event == "CF6" ~ "K", #US
+                           Event == "B3" ~ "C",
+  ))
+
+test11 <- pivot_wider(data = all_tags_combined2, id_cols = TAG, names_from = days_since, values_from = State,)
 # mutate(
 #   #Date = Date,
 #   Datetime = max(Datetime),
@@ -1033,3 +1089,33 @@ ENC_Release2 <- ENC_Release1 %>%
          Biomark = (B3_n > 0 | B4_n >0),
          Mobile = (M1_n > 0 | M2_n >0)) %>%
   filter(!UTM_X %in% 0) #
+
+
+# Condensed ENC_hist correct ----------------------------------------------
+#224371
+
+tag_only <- df_list$All_Events %>%
+  filter(TAG %in% c("230000224371"))
+
+#makes it so when you filter on distinct, you get the first and last events for each day and every distinct event in between
+
+a1 <- tag_only %>%
+  filter(!Event %in% "Release") %>%
+  group_by(Date) %>%
+  mutate(first_last = case_when(Datetime == min(Datetime) ~ "First_of_day",
+                                Datetime == max(Datetime) ~ "Last_of_day",
+                                Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0")
+         ) %>%
+  ungroup()
+
+a2 <- a1 %>%
+  #group_by(min_datetTime, max_dateTime, Event) %>%
+  distinct(Date, Event, TAG, first_last, .keep_all = TRUE)
+# %>%
+#   filter(min_datetTime = min(min))
+  
+# if (there are more than one antenna on one day ) {
+#   display the first and last antennas that were hit that day
+#   and any unique antennas in the middle of those
+# }
+  

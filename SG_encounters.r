@@ -250,14 +250,214 @@ test <- All_events_days %>%
   filter(TAG %in% c("230000224371"))
 
 All_events_days1 <- All_events_days %>%
-  distinct(TAG, Event, days_since, .keep_all = TRUE)
+  #filter(!Event %in% "Release") %>%
+  group_by(Date, TAG) %>%
+  mutate(first_last = case_when(Datetime == min(Datetime) & Event != "Release" ~ "First_of_day",
+                                Datetime == max(Datetime) ~ "Last_of_day",
+                                Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0",
+                                #Event == "Release" ~ "Last_of_day"
+                                )
+  ) %>%
+  ungroup() %>%
+  group_by(TAG) %>%
+  mutate(
+  #   previous_event = case_when(Event == "Release" ~ ReleaseSite,
+  #                                   Event != "Release" ~ lag(Event))
+  # ) %>%
+    previous_event = lag(Event, order_by = Datetime)) %>%
+    
+  distinct(TAG, Event, days_since, first_last, .keep_all = TRUE)
 
-test_days <- pivot_wider(data = All_events_days1, id_cols = TAG, names_from = days_since, values_from = Event)
-
+#test_days <- pivot_wider(data = All_events_days1, id_cols = TAG, names_from = days_since, values_from = Event)
 
 single_tag <- All_events_days1 %>%
-  select(Date, Datetime,TAG,Event,ReleaseSite,RecaptureSite, days_since) %>%
-  filter(TAG %in% "230000224371") 
+  select(Date, Datetime,TAG,Event,ReleaseSite,RecaptureSite, days_since, first_last, previous_event) %>%
+  filter(TAG %in% "230000228956") #230000224371
+
+
+#which(single_tag$first_last == "First_of_day")
+#single_tag_with_release <- single_tag
+#incomplete list for now
+# values_list = list(
+#   "Fraser River Ranch" = 2, "Lower River Run" = 4, "CF6" = 4.1, "CF5" = 4.9, "Below Confluence Antenna" = 5, 
+#   "Pool Above Red Barn Antenna" = 11, "RB2" = 11.1, "RB1" = 11.9,
+#   "Hitching Post" = 7, "HP4" = 7.1, "HP3" = 7.9,
+#   "Windy Gap Dam" = 6, "B3" = 6,
+#   "B4" = .1,
+#   "Release" = 0
+# )
+
+t1 <- Release %>%
+  distinct(RS_Num, .keep_all = TRUE)
+#if count(Date) has entries >1: 
+r1 <- single_tag %>%
+  #mutate(previous_event = lead(Event)) %>%
+  # group_by(Date) %>% #will also want to group_by Tag for all fish
+  #subsets rows in df grouped_by Date where the Event was the same at the end of the day than at the beginning
+  # believe I'm getting an error because there is no first and last of day on day of release; just first of day
+  #tally(Date) %>%
+  # filter(!Event %in% "Release" ) %>%
+  # mutate(
+  #   #x1 = count(Date),
+  # #   net_movement = case_when(
+  # #     #Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "F",
+  # #     #Event == Release ~ "x",
+  # #     Event[which(first_last == "First_of_day")] == Event[which(first_last == "Last_of_day")] ~ "No Net Movement",
+  # #     Event[which(first_last == "First_of_day")] != Event[which(first_last == "Last_of_day")] ~ "There was a Movement"
+  # #   ),
+  # #   # US_DS = case_when(
+  # #   #                   # previous_event == "Release" & (as.numeric(values_list[Event] < as.numeric(values_list[previous_event]))) ~ "DS",
+  # #   #                   as.numeric(values_list[Event] > as.numeric(values_list[previous_event])) ~ "DS",
+  # #   #                   # as.numeric(values_list[Event] < as.numeric(values_list[previous_event])) ~ "US"
+  # #   #                   )
+  # #   
+  # #   #previous_antenna = lag(Event) #will want to do this without grouping by Date eventually; or maybe first??
+  # #   #case_when([])
+  # # )  %>% #end of mutate1
+  #ungroup() %>%
+  
+  mutate(
+    
+    current_event_vals = case_when(Event == "RB1" ~ 11.9,
+                                   Event == "RB2" ~ 11.1,
+                                   Event == "HP3" ~ 7.9,
+                                   Event == "HP4" ~ 7.1,
+                                   Event == "CF5" ~ 4.9,
+                                   Event == "CF6" ~ 4.1,
+                                   Event == "B3" ~ 6,
+                                   Event == "B4" ~ 1,
+                                   
+                                   Event == "Recapture" & RecaptureSite == "Lower River Run" ~ 4,
+                                   Event == "Recapture" & RecaptureSite == "Fraser River Ranch" ~ 2,
+                                   Event == "Recapture" & RecaptureSite == "Kaibab Park" ~ 1,
+                                   Event == "Recapture" & RecaptureSite == "Upper River Run" ~ 3,
+                                   Event == "Recapture" & RecaptureSite == "Below Confluence Antenna" ~ 5,
+                                   Event == "Recapture" & RecaptureSite == "Windy Gap Dam" ~ 6,
+                                   Event == "Recapture" & RecaptureSite == "Hitching Post" ~ 7,
+                                   Event == "Recapture" & RecaptureSite == "Chimney Rock Above Island" ~ 8,
+                                   Event == "Recapture" & RecaptureSite == "Chimney Rock Below Island" ~ 9,
+                                   Event == "Recapture" & RecaptureSite == "Upper Red Barn Fry Site" ~ 10,
+                                   Event == "Recapture" & RecaptureSite == "Pool Above Red Barn Antenna" ~ 11,
+                                   Event == "Recapture" & RecaptureSite == "Lower Red Barn Fry Site" ~ 12,
+                                   Event == "Recapture" & RecaptureSite == "Below Red Barn Diversion #1" ~ 13,
+                                   Event == "Recapture" & RecaptureSite == "Below Red Barn Diversion #2" ~ 14,
+                                   Event == "Recapture" & RecaptureSite == "Kinney Creek" ~ 15,
+                                   Event == "Recapture" & RecaptureSite == "Dark Timber Above Railroad" ~ 16,
+                                   Event == "Recapture" & RecaptureSite == "Sheriff Ranch Upper Field" ~ 17,
+                                   Event == "Recapture" & RecaptureSite == "Shefiff Ranch Middle Field" ~ 18,
+                                   Event == "Recapture" & RecaptureSite == "Sheriff Ranch Fry Site" ~ 19
+                                   
+    ),
+    previous_event_vals = case_when(previous_event == "RB1" ~ 11.9,
+                                    previous_event == "RB2" ~ 11.1,
+                                    previous_event == "HP3" ~ 7.9,
+                                    previous_event == "HP4" ~ 7.1,
+                                    previous_event == "CF5" ~ 4.9,
+                                    previous_event == "CF6" ~ 4.1,
+                                    previous_event == "B3" ~ 6,
+                                    previous_event == "B3" ~ 6,
+                                    
+                                    previous_event == "Release" & ReleaseSite == "Lower River Run" ~ 4,
+                                    previous_event == "Release" & ReleaseSite == "Fraser River Ranch" ~ 2,
+                                    previous_event == "Release" & ReleaseSite == "Kaibab Park" ~ 1,
+                                    previous_event == "Release" & ReleaseSite == "Upper River Run" ~ 3,
+                                    previous_event == "Release" & ReleaseSite == "Below Confluence Antenna" ~ 5,
+                                    previous_event == "Release" & ReleaseSite == "Windy Gap Dam" ~ 6,
+                                    previous_event == "Release" & ReleaseSite == "Hitching Post" ~ 7,
+                                    previous_event == "Release" & ReleaseSite == "Chimney Rock Above Island" ~ 8,
+                                    previous_event == "Release" & ReleaseSite == "Chimney Rock Below Island" ~ 9,
+                                    previous_event == "Release" & ReleaseSite == "Upper Red Barn Fry Site" ~ 10,
+                                    previous_event == "Release" & ReleaseSite == "Pool Above Red Barn Antenna" ~ 11,
+                                    previous_event == "Release" & ReleaseSite == "Lower Red Barn Fry Site" ~ 12,
+                                    previous_event == "Release" & ReleaseSite == "Below Red Barn Diversion #1" ~ 13,
+                                    previous_event == "Release" & ReleaseSite == "Below Red Barn Diversion #2" ~ 14,
+                                    previous_event == "Release" & ReleaseSite == "Kinney Creek" ~ 15,
+                                    previous_event == "Release" & ReleaseSite == "Dark Timber Above Railroad" ~ 16,
+                                    previous_event == "Release" & ReleaseSite == "Sheriff Ranch Upper Field" ~ 17,
+                                    previous_event == "Release" & ReleaseSite == "Shefiff Ranch Middle Field" ~ 18, #will need to be changed once this typo is corrected
+                                    previous_event == "Release" & ReleaseSite == "Sheriff Ranch Fry Site" ~ 19),
+    
+    # this is for quantiying general upstream/downstream movement
+    movement = case_when((current_event_vals > previous_event_vals) ~ "Downstream Movement",
+                         (current_event_vals < previous_event_vals) ~ "Upstream Movement",
+                         current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) ~ "No Movement",
+                         current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement",
+                         current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement"),
+    test_05 = lag(Date, order_by = Datetime),
+    test = (Date == lag(Date, order_by = Datetime)),
+    teststate_1 = case_when(movement == "Downstream Movement" & (Event %in% c("CF5", "CF6")) ~ "L",
+                            movement == "Upstream Movement" & (Event %in% c("CF5", "CF6")) ~ "K",
+                            movement == "Downstream Movement" & (Event %in% c("HP3", "HP4")) ~ "J",
+                            movement == "Upstream Movement" & (Event %in% c("HP3", "HP4")) ~ "I",
+                            movement == "Downstream Movement" & (Event %in% c("RB1", "RB2")) ~ "H",
+                            movement == "Upstream Movement" & (Event %in% c("RB1", "RB2")) ~ "G",
+                            Event == "B3" ~ "C",
+                            Event == "B4" ~ "F",
+                            Event == "Release" & ReleaseSite == "Lower River Run" ~ "E",
+                            Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "F",
+                            Event == "Release" & ReleaseSite == "Kaibab Park" ~ "F",
+                            Event == "Release" & ReleaseSite == "Upper River Run" ~ "E",
+                            Event == "Release" & ReleaseSite == "Below Confluence Antenna" ~ "D",
+                            Event == "Release" & ReleaseSite == "Windy Gap Dam" ~ "C",
+                            Event == "Release" & ReleaseSite == "Hitching Post" ~ "C",
+                            Event == "Release" & ReleaseSite == "Chimney Rock Above Island" ~ "B",
+                            Event == "Release" & ReleaseSite == "Chimney Rock Below Island" ~ "B",
+                            Event == "Release" & ReleaseSite == "Upper Red Barn Fry Site" ~ "B",
+                            Event == "Release" & ReleaseSite == "Pool Above Red Barn Antenna" ~ "B",
+                            Event == "Release" & ReleaseSite == "Lower Red Barn Fry Site" ~ "A",
+                            Event == "Release" & ReleaseSite == "Below Red Barn Diversion #1" ~ "A",
+                            Event == "Release" & ReleaseSite == "Below Red Barn Diversion #2" ~ "A",
+                            Event == "Release" & ReleaseSite == "Kinney Creek" ~ "A",
+                            Event == "Release" & ReleaseSite == "Dark Timber Above Railroad" ~ "A",
+                            Event == "Release" & ReleaseSite == "Sheriff Ranch Upper Field" ~ "A",
+                            Event == "Release" & ReleaseSite == "Shefiff Ranch Middle Field" ~ "A", #will need to be changed once this typo is corrected
+                            Event == "Release" & ReleaseSite == "Sheriff Ranch Fry Site" ~ "A")
+
+) #
+
+ r2 <- r1 %>%
+  filter(!is.na(teststate_1)) %>%
+  group_by(Date) %>%
+  mutate(
+    #tesst = str_detect(teststate_1, "[:alpha:]"))
+    
+    teststate_2 = paste0(teststate_1[which(Datetime == min(Datetime))],
+                         #                                                                                                                               #unique(teststate_1), 
+                         teststate_1[which(Datetime == max(Datetime))]),
+    teststate_3 = str_c(teststate_1, collapse = NULL )
+      
+      # case_when(teststate_1[which(Datetime == min(Datetime))] != teststate_1[which(Datetime == max(Datetime))] ~ paste0(teststate_1[which(Datetime == min(Datetime))],
+      #                                                                                                                               #unique(teststate_1), 
+      #                                                                                                                               teststate_1[which(Datetime == max(Datetime))]),
+      #                       teststate_1[which(Datetime == min(Datetime))] == teststate_1[which(Datetime == max(Datetime))] ~ teststate_1)
+          
+   )  %>%
+  distinct(Date, TAG, teststate_2, .keep_all = TRUE) %>%
+  mutate(teststate_4 = gsub('([[:alpha:]])\\1+', '\\1', teststate_2)) #removes consecutive letters
+
+# to do:
+# be able to capture all unique states in a day, not just the first and last ones of the day
+# apply to all tags
+# fill out full list of values and case_when for recaps and all release sites
+# see if I can corporate release event and state
+
+
+values_list = list(
+  "Fraser River Ranch" = 2, "Lower River Run" = 4, "CF6" = 4.1, "CF5" = 4.9, "Below Confluence Antenna" = 5, 
+  "Pool Above Red Barn Antenna" = 11, "RB2" = 11.1, "RB1" = 11.9,
+  "Hitching Post" = 7, "HP4" = 7.1, "HP3" = 7.9,
+  "Windy Gap Dam" = 6, "B3" = 6,
+  "B4" = .1,
+  "Release" = 0
+)
+single_tag %>%
+  group_by(Date) %>%
+  mutate(x1 = count(Date))
+
+non_na_rows <- which(!is.na(x3$State))
+
+if (x3$State[non_na_rows[i]] == "F" & x3$State[non_na_rows[i+1]] == "L") {
+  
 
 all_tags <- All_events_days1 %>%
   select(Date, Datetime,TAG,Event,ReleaseSite,RecaptureSite, days_since) 

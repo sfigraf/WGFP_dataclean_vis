@@ -12,7 +12,6 @@ library(bslib)
 # cntrl + shft + A to reformat chunks of code
 # rsconnect::showLogs(appName="WGFP_dataclean_vis",streaming=TRUE) will show logs when trying to load app browser
 # had "application failed to start" error and fixed both times with above command. both times because packages in local environment (tidyverse and lubridate) weren't called with library() command 
-# runs slow right now anyway. might be worth putting at least release data outside reactive context
 
 # Data Read Ins -----------------------------------------------------------
 
@@ -333,6 +332,7 @@ server <- function(input, output, session) {
                  Event %in% input$picker1,
                  Species %in% input$picker2,
                  ReleaseSite %in% input$picker3) %>%
+          #this part is for making sure the sequence of events will make sense sequentially: tells where a fish started and ended the day and keeps other unique entries in between
           group_by(Date) %>%
           mutate(first_last = case_when(Datetime == min(Datetime) ~ "First_of_day",
                                         Datetime == max(Datetime) ~ "Last_of_day",
@@ -355,7 +355,8 @@ server <- function(input, output, session) {
               Species %in% input$picker2,
               ReleaseSite %in% input$picker3) %>%
             #this part is for making sure the sequence of events will make sense
-            group_by(Date) %>%
+            # if there's no tag input then have to group_by TAG as well
+            group_by(Date, TAG) %>% 
             mutate(first_last = case_when(Datetime == min(Datetime) ~ "First_of_day",
                                           Datetime == max(Datetime) ~ "Last_of_day",
                                           Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0")

@@ -35,6 +35,7 @@ Recaptures_05 <- Recaptures %>%
   mutate(Date = as.character(mdy(Date)))
 
 source("WGFP_EncounterHistoriesFunction.R")
+source("Get_states_function.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
 
@@ -191,7 +192,35 @@ ui <- fluidPage(
                         
                       ) #end of Encounter histories sidebar layout
                       
-             ) #end of Encounter Histories Tab
+             ), #end of Encounter Histories Tab
+
+
+# States/Movements UI -----------------------------------------------------
+
+
+            tabPanel("States, Movements, and their Visuals",
+                     sidebarLayout(
+                       sidebarPanel(
+                         actionButton("button4", label = "Get States: Takes ~ 45 seconds", width = "100%",
+                                      onclick = "var $btn=$(this); setTimeout(function(){$btn.remove();},0);"),
+                         hr(),
+                         conditionalPanel(condition = "input.button4 == true",
+                                          textInput("textinput2", label = "Filter by TAG"),
+                                          actionButton("button5", label = "Render Table", width = "100%")
+                                          ) #end of conditional panel
+                         
+                       ),#end of sidebar panel
+                       mainPanel(tabsetPanel(
+                         tabPanel("States Dataframe",
+                                  withSpinner(DT::dataTableOutput("states1")))
+                         
+                        )#end of tabsetPanel
+                      )#end of mainPanel
+                     )#end of sidebarLayout including sidebarPanel and Mainpanel
+                     
+                     )#end of States and movements Tab
+         
+
     ) #end of navbar page
 ) #end of fluidpage
 
@@ -389,11 +418,32 @@ server <- function(input, output, session) {
         )
         
         return(enc_hist_d_list)
-    }
+    }) #end of ENC data list eventReactive
+    
+
+# States data reactives ---------------------------------------------------
+
+    
+    initial_states_data <- eventReactive(input$button4,{
+      states_data1 <- get_states_function(df_list$All_Events)
+      #removeUI(selector = "#button4", immediate = TRUE)
+
+      return(states_data1)
         
-        
-        
-    )
+    })
+    
+    # filtered_states_data <- eventReactive(input$button5,{
+    #   
+    #   if(input$textinput1 !=''){
+    #     states_data1 <- initial_states_data() %>%
+    #       filter(TAG == input$textinput2)
+    #   } else {
+    #     states_data1 <- initial_states_data()
+    #   }
+    #   
+    #   
+    #   return(states_data1)
+    # })
     
     
 
@@ -513,6 +563,22 @@ server <- function(input, output, session) {
         language = list(emptyTable = "Enter inputs and press Render Table")
       ) #end of options list
       
+    )
+    
+    output$states1 <- renderDataTable(
+      
+      initial_states_data(),
+      rownames = FALSE,
+      #extensions = c('Buttons'),
+      #for slider filter instead of text input
+      filter = 'top',
+      options = list(
+        pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+        dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+        language = list(emptyTable = "Enter inputs and press Render Table")
+        
+        #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+      )
     )
     
 

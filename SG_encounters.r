@@ -250,29 +250,30 @@ test <- All_events_days %>%
   filter(TAG %in% c("230000224371"))
 
 All_events_days1 <- All_events_days %>%
-  #filter(!Event %in% "Release") %>%
+  filter(!Event %in% c("M1", "M2")) %>% #filtering out mobile detections for now
+  
   group_by(Date, TAG) %>%
   mutate(first_last = case_when(Datetime == min(Datetime) & Event != "Release" ~ "First_of_day",
                                 Datetime == max(Datetime) ~ "Last_of_day",
                                 Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0",
                                 #Event == "Release" ~ "Last_of_day"
-                                )
+  )
   ) %>%
   ungroup() %>%
+  #distinct 
+  distinct(TAG, Event, days_since, first_last, .keep_all = TRUE) %>%
+  
   group_by(TAG) %>%
   mutate(
-  #   previous_event = case_when(Event == "Release" ~ ReleaseSite,
-  #                                   Event != "Release" ~ lag(Event))
-  # ) %>%
     previous_event = lag(Event, order_by = Datetime)) %>%
-    
-  distinct(TAG, Event, days_since, first_last, .keep_all = TRUE)
+  
+  select(Date, Datetime,TAG,Event,ReleaseSite,RecaptureSite, days_since, first_last, previous_event) 
 
 #test_days <- pivot_wider(data = All_events_days1, id_cols = TAG, names_from = days_since, values_from = Event)
 
 single_tag <- All_events_days1 %>%
   select(Date, Datetime,TAG,Event,ReleaseSite,RecaptureSite, days_since, first_last, previous_event) %>%
-  filter(TAG %in% "230000228956") #230000224371
+  filter(TAG %in% "230000228714") #230000224371
 
 
 #which(single_tag$first_last == "First_of_day")
@@ -291,31 +292,8 @@ t1 <- Release %>%
   distinct(RS_Num, .keep_all = TRUE)
 #if count(Date) has entries >1: 
 r1 <- single_tag %>%
-  #mutate(previous_event = lead(Event)) %>%
-  # group_by(Date) %>% #will also want to group_by Tag for all fish
-  #subsets rows in df grouped_by Date where the Event was the same at the end of the day than at the beginning
-  # believe I'm getting an error because there is no first and last of day on day of release; just first of day
-  #tally(Date) %>%
-  # filter(!Event %in% "Release" ) %>%
-  # mutate(
-  #   #x1 = count(Date),
-  # #   net_movement = case_when(
-  # #     #Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "F",
-  # #     #Event == Release ~ "x",
-  # #     Event[which(first_last == "First_of_day")] == Event[which(first_last == "Last_of_day")] ~ "No Net Movement",
-  # #     Event[which(first_last == "First_of_day")] != Event[which(first_last == "Last_of_day")] ~ "There was a Movement"
-  # #   ),
-  # #   # US_DS = case_when(
-  # #   #                   # previous_event == "Release" & (as.numeric(values_list[Event] < as.numeric(values_list[previous_event]))) ~ "DS",
-  # #   #                   as.numeric(values_list[Event] > as.numeric(values_list[previous_event])) ~ "DS",
-  # #   #                   # as.numeric(values_list[Event] < as.numeric(values_list[previous_event])) ~ "US"
-  # #   #                   )
-  # #   
-  # #   #previous_antenna = lag(Event) #will want to do this without grouping by Date eventually; or maybe first??
-  # #   #case_when([])
-  # # )  %>% #end of mutate1
-  #ungroup() %>%
-  
+  group_by(TAG) %>% 
+  # ungroup() %>%
   mutate(
     
     current_event_vals = case_when(Event == "RB1" ~ 11.9,
@@ -355,36 +333,73 @@ r1 <- single_tag %>%
                                     previous_event == "CF5" ~ 4.9,
                                     previous_event == "CF6" ~ 4.1,
                                     previous_event == "B3" ~ 6,
-                                    previous_event == "B3" ~ 6,
+                                    previous_event == "B4" ~ 1,
                                     
-                                    previous_event == "Release" & ReleaseSite == "Lower River Run" ~ 4,
-                                    previous_event == "Release" & ReleaseSite == "Fraser River Ranch" ~ 2,
-                                    previous_event == "Release" & ReleaseSite == "Kaibab Park" ~ 1,
-                                    previous_event == "Release" & ReleaseSite == "Upper River Run" ~ 3,
-                                    previous_event == "Release" & ReleaseSite == "Below Confluence Antenna" ~ 5,
-                                    previous_event == "Release" & ReleaseSite == "Windy Gap Dam" ~ 6,
-                                    previous_event == "Release" & ReleaseSite == "Hitching Post" ~ 7,
-                                    previous_event == "Release" & ReleaseSite == "Chimney Rock Above Island" ~ 8,
-                                    previous_event == "Release" & ReleaseSite == "Chimney Rock Below Island" ~ 9,
-                                    previous_event == "Release" & ReleaseSite == "Upper Red Barn Fry Site" ~ 10,
-                                    previous_event == "Release" & ReleaseSite == "Pool Above Red Barn Antenna" ~ 11,
-                                    previous_event == "Release" & ReleaseSite == "Lower Red Barn Fry Site" ~ 12,
-                                    previous_event == "Release" & ReleaseSite == "Below Red Barn Diversion #1" ~ 13,
-                                    previous_event == "Release" & ReleaseSite == "Below Red Barn Diversion #2" ~ 14,
-                                    previous_event == "Release" & ReleaseSite == "Kinney Creek" ~ 15,
-                                    previous_event == "Release" & ReleaseSite == "Dark Timber Above Railroad" ~ 16,
-                                    previous_event == "Release" & ReleaseSite == "Sheriff Ranch Upper Field" ~ 17,
-                                    previous_event == "Release" & ReleaseSite == "Shefiff Ranch Middle Field" ~ 18, #will need to be changed once this typo is corrected
-                                    previous_event == "Release" & ReleaseSite == "Sheriff Ranch Fry Site" ~ 19),
+                                    #using str_detect with "Release" gets both Release events and "recap and release" events
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Lower River Run" ~ 4,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Fraser River Ranch" ~ 2,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Kaibab Park" ~ 1,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Upper River Run" ~ 3,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Below Confluence Antenna" ~ 5,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Windy Gap Dam" ~ 6,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Hitching Post" ~ 7,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Chimney Rock Above Island" ~ 8,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Chimney Rock Below Island" ~ 9,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Upper Red Barn Fry Site" ~ 10,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Pool Above Red Barn Antenna" ~ 11,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Lower Red Barn Fry Site" ~ 12,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Below Red Barn Diversion #1" ~ 13,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Below Red Barn Diversion #2" ~ 14,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Kinney Creek" ~ 15,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Dark Timber Above Railroad" ~ 16,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Sheriff Ranch Upper Field" ~ 17,
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Shefiff Ranch Middle Field" ~ 18, #will need to be changed once this typo is corrected
+                                    str_detect(previous_event, "Release") & ReleaseSite == "Sheriff Ranch Fry Site" ~ 19,
+                                    
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower River Run" ~ 4,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Fraser River Ranch" ~ 2,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kaibab Park" ~ 1,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper River Run" ~ 3,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Confluence Antenna" ~ 5,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Windy Gap Dam" ~ 6,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Hitching Post" ~ 7,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Above Island" ~ 8,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Below Island" ~ 9,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper Red Barn Fry Site" ~ 10,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Pool Above Red Barn Antenna" ~ 11,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower Red Barn Fry Site" ~ 12,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #1" ~ 13,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #2" ~ 14,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kinney Creek" ~ 15,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Dark Timber Above Railroad" ~ 16,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Upper Field" ~ 17,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Shefiff Ranch Middle Field" ~ 18,
+                                    previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Fry Site" ~ 19
+                                    
+                                    
+    ),
     
     # this is for quantiying general upstream/downstream movement
-    movement = case_when((current_event_vals > previous_event_vals) ~ "Downstream Movement",
-                         (current_event_vals < previous_event_vals) ~ "Upstream Movement",
-                         current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) ~ "No Movement",
-                         current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement",
-                         current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement"),
-    test_05 = lag(Date, order_by = Datetime),
-    test = (Date == lag(Date, order_by = Datetime)),
+    movement = case_when(
+      # if previous movement is > or < current one, it was either a upstream or downstream movement
+      (current_event_vals > previous_event_vals) ~ "Downstream Movement",
+      (current_event_vals < previous_event_vals) ~ "Upstream Movement",
+      
+      #if the values are the same and the day is the same, it means there was multiple consecutive detections at the same antenna and same day 
+      current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) ~ "No Movement; Same Day",
+      
+      #if the vals are the same but the day is different, and the previous event was a stagnant state (B3, b4, release, etc) then there was no movement and the fish is in the same state it was
+      current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("B3", "B4", "Release", "Recapture", "Recapture and Release") ~ "No Movement",
+      
+      #if the vals are the same but the day is different and the previous state was  "movement" state, it is either a upstream movement or downstream one. 
+      # this is the part i might want to change because i kinda want something to show if a fish ended the day on the same antenna
+      current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement",
+      current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement"),
+    
+    #   case_when(
+    #   #current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement1",
+    #       
+    # ),
     teststate_1 = case_when(movement == "Downstream Movement" & (Event %in% c("CF5", "CF6")) ~ "L",
                             movement == "Upstream Movement" & (Event %in% c("CF5", "CF6")) ~ "K",
                             movement == "Downstream Movement" & (Event %in% c("HP3", "HP4")) ~ "J",
@@ -393,28 +408,29 @@ r1 <- single_tag %>%
                             movement == "Upstream Movement" & (Event %in% c("RB1", "RB2")) ~ "G",
                             Event == "B3" ~ "C",
                             Event == "B4" ~ "F",
-                            Event == "Release" & ReleaseSite == "Lower River Run" ~ "E",
-                            Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ "F",
-                            Event == "Release" & ReleaseSite == "Kaibab Park" ~ "F",
-                            Event == "Release" & ReleaseSite == "Upper River Run" ~ "E",
-                            Event == "Release" & ReleaseSite == "Below Confluence Antenna" ~ "D",
-                            Event == "Release" & ReleaseSite == "Windy Gap Dam" ~ "C",
-                            Event == "Release" & ReleaseSite == "Hitching Post" ~ "C",
-                            Event == "Release" & ReleaseSite == "Chimney Rock Above Island" ~ "B",
-                            Event == "Release" & ReleaseSite == "Chimney Rock Below Island" ~ "B",
-                            Event == "Release" & ReleaseSite == "Upper Red Barn Fry Site" ~ "B",
-                            Event == "Release" & ReleaseSite == "Pool Above Red Barn Antenna" ~ "B",
-                            Event == "Release" & ReleaseSite == "Lower Red Barn Fry Site" ~ "A",
-                            Event == "Release" & ReleaseSite == "Below Red Barn Diversion #1" ~ "A",
-                            Event == "Release" & ReleaseSite == "Below Red Barn Diversion #2" ~ "A",
-                            Event == "Release" & ReleaseSite == "Kinney Creek" ~ "A",
-                            Event == "Release" & ReleaseSite == "Dark Timber Above Railroad" ~ "A",
-                            Event == "Release" & ReleaseSite == "Sheriff Ranch Upper Field" ~ "A",
-                            Event == "Release" & ReleaseSite == "Shefiff Ranch Middle Field" ~ "A", #will need to be changed once this typo is corrected
-                            Event == "Release" & ReleaseSite == "Sheriff Ranch Fry Site" ~ "A")
-
-) #
-
+                            str_detect(Event, "Release") & ReleaseSite == "Lower River Run" ~ "E",
+                            str_detect(Event, "Release") & ReleaseSite == "Fraser River Ranch" ~ "F",
+                            str_detect(Event, "Release") & ReleaseSite == "Kaibab Park" ~ "F",
+                            str_detect(Event, "Release") & ReleaseSite == "Upper River Run" ~ "E",
+                            str_detect(Event, "Release") & ReleaseSite == "Below Confluence Antenna" ~ "D",
+                            str_detect(Event, "Release") & ReleaseSite == "Windy Gap Dam" ~ "C",
+                            str_detect(Event, "Release") & ReleaseSite == "Hitching Post" ~ "C",
+                            str_detect(Event, "Release") & ReleaseSite == "Chimney Rock Above Island" ~ "B",
+                            str_detect(Event, "Release") & ReleaseSite == "Chimney Rock Below Island" ~ "B",
+                            str_detect(Event, "Release") & ReleaseSite == "Upper Red Barn Fry Site" ~ "B",
+                            str_detect(Event, "Release") & ReleaseSite == "Pool Above Red Barn Antenna" ~ "B",
+                            str_detect(Event, "Release") & ReleaseSite == "Lower Red Barn Fry Site" ~ "A",
+                            str_detect(Event, "Release") & ReleaseSite == "Below Red Barn Diversion #1" ~ "A",
+                            str_detect(Event, "Release") & ReleaseSite == "Below Red Barn Diversion #2" ~ "A",
+                            str_detect(Event, "Release") & ReleaseSite == "Kinney Creek" ~ "A",
+                            str_detect(Event, "Release") & ReleaseSite == "Dark Timber Above Railroad" ~ "A",
+                            str_detect(Event, "Release") & ReleaseSite == "Sheriff Ranch Upper Field" ~ "A",
+                            str_detect(Event, "Release") & ReleaseSite == "Shefiff Ranch Middle Field" ~ "A", #will need to be changed once this typo is corrected
+                            str_detect(Event, "Release") & ReleaseSite == "Sheriff Ranch Fry Site" ~ "A"),
+    
+  ) #end of mutate
+# test_05 = lag(Date, order_by = Datetime),
+#     test = (Date == lag(Date, order_by = Datetime)),
  r2 <- r1 %>%
   filter(!is.na(teststate_1)) %>%
   group_by(Date) %>%
@@ -438,8 +454,7 @@ r1 <- single_tag %>%
 # to do:
 # be able to capture all unique states in a day, not just the first and last ones of the day
 # apply to all tags
-# fill out full list of values and case_when for recaps and all release sites
-# see if I can corporate release event and state
+#
 
 
 values_list = list(
@@ -450,6 +465,82 @@ values_list = list(
   "B4" = .1,
   "Release" = 0
 )
+
+r2_5 <- r1 %>%
+  group_by(Date, TAG) %>%
+  mutate(c_number_of_detections = n(),
+         u1 = length(unique(Event)),
+         
+         ) %>%
+  ungroup() %>%
+  #need to group_by TAG for lag to work; don't group_by date or else lag will leave out some stuff
+  group_by(TAG) %>%
+  mutate(test_movement11 = case_when(
+    #if the values are more or less than previous values, it's moved upstream or downstream
+    (current_event_vals > previous_event_vals) ~ "Downstream Movement",
+    (current_event_vals < previous_event_vals) ~ "Upstream Movement",
+    
+    #if the values are the same and the day is the same, it means there was multiple consecutive detections at the same antenna and same day 
+    current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) ~ "No Movement; Same Day",
+    
+    #if the vals are the same but the day is different, and the previous event was a stagnant state (B3, b4, release, etc) then there was no movement and the fish is in the same state it was
+    current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("B3", "B4", "Release", "Recapture", "Recapture and Release") ~ "No Movement",
+    
+    #if a fish ended the previous detection upstream of an antenna, then hits the same antenna again AND hits a different antenna that day (probably from that site), it's a downstream movement
+    current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (u1 > 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement1",
+    #if a fish ended the previous detection downstream of an antenna, then hits the same antenna again AND hits a different antenna that day (probably from that site), it's a upstream movement
+    current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (u1 > 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement1",
+    
+    
+    
+    #this says that if a fish ended the previous detection upstream of a antenna, then hits the same antenna again multiple times without hitting the next downstream antenna, it's assumed to have then ended back upstream
+    current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (u1 == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Down then back up move",
+    #this says that if a fish ended the previous detection downstream of a antenna, then hits the same antenna again multiple times without hitting the next upstream antenna, it's assumed to have then ended back upstream
+    
+    current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (u1 == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Up then back down move",
+    #this says that if the fish came from downstream and hit only one antenna one time, it's assumed to have continued upstream and just missed hitting the upstream antenna
+    current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (u1 == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement without hitting both antennas",
+    #this says that if the fish came from upstream and hit only one antenna one time, it's assumed to have continued downstream and just missed hitting the other downstream antenna
+    current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (u1 == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement without hitting both antennas"),
+
+  teststate_11 = case_when(test_movement11 %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "L",
+                           test_movement11 %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "K",
+                           test_movement11 %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas") & (Event %in% c("HP3", "HP4")) ~ "J",
+                           test_movement11 %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas") & (Event %in% c("HP3", "HP4")) ~ "I",
+                           test_movement11 %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas") & (Event %in% c("RB1", "RB2")) ~ "H",
+                           test_movement11 %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas") & (Event %in% c("RB1", "RB2")) ~ "G",
+                           test_movement11 == "Up then back down move" & (Event %in% c("HP3")) ~ "IJ",
+                           test_movement11 == "Up then back down move" & (Event %in% c("RB1")) ~ "GH",
+                           test_movement11 == "Up then back down move" & (Event %in% c("CF5")) ~ "KL",
+                           test_movement11 == "Down then back up move" & (Event %in% c("HP4")) ~ "JI",
+                           test_movement11 == "Down then back up move" & (Event %in% c("RB2")) ~ "HG",
+                           test_movement11 == "Down then back up move" & (Event %in% c("CF6")) ~ "IJ",
+                           
+                          Event == "B3" ~ "C",
+                          Event == "B4" ~ "F",
+                          str_detect(Event, "Release") & ReleaseSite == "Lower River Run" ~ "E",
+                          str_detect(Event, "Release") & ReleaseSite == "Fraser River Ranch" ~ "F",
+                          str_detect(Event, "Release") & ReleaseSite == "Kaibab Park" ~ "F",
+                          str_detect(Event, "Release") & ReleaseSite == "Upper River Run" ~ "E",
+                          str_detect(Event, "Release") & ReleaseSite == "Below Confluence Antenna" ~ "D",
+                          str_detect(Event, "Release") & ReleaseSite == "Windy Gap Dam" ~ "C",
+                          str_detect(Event, "Release") & ReleaseSite == "Hitching Post" ~ "C",
+                          str_detect(Event, "Release") & ReleaseSite == "Chimney Rock Above Island" ~ "B",
+                          str_detect(Event, "Release") & ReleaseSite == "Chimney Rock Below Island" ~ "B",
+                          str_detect(Event, "Release") & ReleaseSite == "Upper Red Barn Fry Site" ~ "B",
+                          str_detect(Event, "Release") & ReleaseSite == "Pool Above Red Barn Antenna" ~ "B",
+                          str_detect(Event, "Release") & ReleaseSite == "Lower Red Barn Fry Site" ~ "A",
+                          str_detect(Event, "Release") & ReleaseSite == "Below Red Barn Diversion #1" ~ "A",
+                          str_detect(Event, "Release") & ReleaseSite == "Below Red Barn Diversion #2" ~ "A",
+                          str_detect(Event, "Release") & ReleaseSite == "Kinney Creek" ~ "A",
+                          str_detect(Event, "Release") & ReleaseSite == "Dark Timber Above Railroad" ~ "A",
+                          str_detect(Event, "Release") & ReleaseSite == "Sheriff Ranch Upper Field" ~ "A",
+                          str_detect(Event, "Release") & ReleaseSite == "Shefiff Ranch Middle Field" ~ "A", #will need to be changed once this typo is corrected
+                          str_detect(Event, "Release") & ReleaseSite == "Sheriff Ranch Fry Site" ~ "A"),
+
+) %>% #end of mutate
+  select(Date, Datetime, first_last, Event, movement,teststate_1, test_movement11,  teststate_11, c_number_of_detections, u1, ReleaseSite, TAG)
+  #count(Date, TAG) 
 single_tag %>%
   group_by(Date) %>%
   mutate(x1 = count(Date))

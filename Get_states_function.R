@@ -9,10 +9,11 @@
 # hitching post release site is below the antennas and if a fish released at hithcing post hits the hithcin post antennas, it's an upstream movement
 
 # no mobile detections incorporated for now
-All_events <- df_list$All_Events
+#All_events <- df_list$All_Events
 
 get_states_function <- function(All_events) {
-  
+  library(tidyverse) 
+  library(lubridate)
   
   start_time <- Sys.time()
   
@@ -34,7 +35,7 @@ get_states_function <- function(All_events) {
            daily_unique_events = length(unique(Event))
     ) %>%
     ungroup() %>%
-    distinct(TAG, Event, days_since, first_last, .keep_all = TRUE) %>%
+    distinct(TAG, Event, Date, first_last, .keep_all = TRUE) %>%
     
     group_by(TAG) %>%
     mutate(
@@ -242,7 +243,7 @@ get_states_function <- function(All_events) {
     )  %>%
     mutate(teststate_4 = gsub('([[:alpha:]])\\1+', '\\1', teststate_2)) %>% #removes consecutive letters
     distinct(Date, TAG, teststate_4, .keep_all = TRUE) %>%
-    select(Date, Datetime, TAG, teststate_4, ReleaseSite, Species, Release_Length, Release_Weight, movement, c_number_of_detections, daily_unique_events)
+    select(Date, Datetime, TAG, teststate_4, ReleaseSite, Species, Release_Length, Release_Weight, movement, c_number_of_detections, daily_unique_events, days_since)
           
   #testState4 is really the realState
   # r3 <- r2 %>%
@@ -257,15 +258,27 @@ get_states_function <- function(All_events) {
   #   
   #   select(Date, Datetime,TAG,Event,teststate_4, movement, ReleaseSite,RecaptureSite, days_since, first_last, previous_event)
   
+
+# Pivot_wider -------------------------------------------------------------
+
+  days <- data.frame(days_since = 1:max(r2$days_since))
+  
+  days_and_states <- full_join(days, r2, by = "days_since")
+  
+  
+  days_and_states_wide <- pivot_wider(days_and_states, id_cols = TAG, names_from = days_since, values_from = teststate_4)
+  
+  states_df_list <- list("All_States" = r2, "Days_and_states_wide" = days_and_states_wide)
   #this just tells how long the fucntion takes
   end_time <- Sys.time()
   print(paste("States Function took", round(end_time-start_time,2), "Seconds"))
   
-  return(r2)
+  return(states_df_list)
 }
 
 
-#statesdf <- get_states_function(All_events)
+#statesdf_list <- get_states_function(All_events)
+#statesdf <- statesdf_list$All_States
 #####################
 
 # u4 <- u3 %>%

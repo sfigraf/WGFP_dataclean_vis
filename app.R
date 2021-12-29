@@ -206,13 +206,26 @@ ui <- fluidPage(
                          hr(),
                          conditionalPanel(condition = "input.button4 == true",
                                           textInput("textinput2", label = "Filter by TAG"),
+                                          pickerInput(inputId = "picker4",
+                                                      label = "Select Release Site:",
+                                                      choices = c(1:5), #will need to be updated later on for uniqueness
+                                                      selected = c(1:5),
+                                                      multiple = TRUE,
+                                                      options = list(
+                                                        `actions-box` = TRUE #this makes the "select/deselect all" option
+                                                      )
+                                                      
+                                                      
+                                          ), #end of picker 4 input 
                                           actionButton("button5", label = "Render Table", width = "100%")
                                           ) #end of conditional panel
                          
                        ),#end of sidebar panel
                        mainPanel(tabsetPanel(
                          tabPanel("States Dataframe",
-                                  withSpinner(DT::dataTableOutput("states1")))
+                                  withSpinner(DT::dataTableOutput("states1"))),
+                         tabPanel("States and Days Wide",
+                                  withSpinner(DT::dataTableOutput("states2")))
                          
                         )#end of tabsetPanel
                       )#end of mainPanel
@@ -423,25 +436,38 @@ server <- function(input, output, session) {
 
 # States data reactives ---------------------------------------------------
 
-    
-    initial_states_data <- eventReactive(input$button4,{
-      states_data1 <- get_states_function(df_list$All_Events)
+    #want it so that when the first button4 is pressed, the whole dataset is made
+    #then after that i want to render the table with button5
+    initial_states_data_list <- eventReactive(input$button4,{
+      states_data1_list <- get_states_function(df_list$All_Events)
       #removeUI(selector = "#button4", immediate = TRUE)
+      
+        # if(input$textinput1 !=''){
+        #   states_data1 <- states_data1 %>%
+        #     filter(TAG == input$textinput2)
+        # } else {
+        #   states_data1 <- states_data1
+        # }
 
-      return(states_data1)
+      return(states_data1_list)
         
     })
     
     # filtered_states_data <- eventReactive(input$button5,{
     #   
-    #   if(input$textinput1 !=''){
-    #     states_data1 <- initial_states_data() %>%
-    #       filter(TAG == input$textinput2)
-    #   } else {
-    #     states_data1 <- initial_states_data()
-    #   }
-    #   
-    #   
+    #   states_data1 <- initial_states_data_list()All_States %>%
+    #     filter(
+    #       daily_unique_events %in% picker4
+    #     )
+    # 
+    #   # if(input$textinput1 !=''){
+    #   #   states_data1 <- initial_states_data_list()$All_States %>%
+    #   #     filter(TAG == input$textinput2)
+    #   # } else {
+    #   #   states_data1 <- initial_states_data_list()$All_States
+    #   # }
+    # 
+    # 
     #   return(states_data1)
     # })
     
@@ -551,35 +577,85 @@ server <- function(input, output, session) {
         )
     )
     
-    output$allevents1 <- renderDataTable(
-      enc_hist_data_list()$allevents_data,
-      rownames = FALSE,
-      #extensions = c('Buttons'),
-      #for slider filter instead of text input
-      filter = 'top',
-      options = list(
-        pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-        dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again #errorin list: arg 5 is empty because I had a comma after the dom argument so it thought there was gonna be another argument input
-        language = list(emptyTable = "Enter inputs and press Render Table")
-      ) #end of options list
+    output$allevents1 <- renderDataTable({
+      datatable(enc_hist_data_list()$allevents_data,
+                  rownames = FALSE,
+                  #extensions = c('Buttons'),
+                  #for slider filter instead of text input
+                  filter = 'top',
+                  options = list(
+                    pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+                    dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again #errorin list: arg 5 is empty because I had a comma after the dom argument so it thought there was gonna be another argument input
+                    language = list(emptyTable = "Enter inputs and press Render Table")
+                  ) #end of options list
+                ) %>%
+        formatStyle(
+          columns = 1:ncol(enc_hist_data_list()$allevents_data)
+          #rownames = FALSE
+        )
+
       
-    )
+    })
     
-    output$states1 <- renderDataTable(
+    output$states1 <- renderDT({
       
-      initial_states_data(),
-      rownames = FALSE,
-      #extensions = c('Buttons'),
-      #for slider filter instead of text input
-      filter = 'top',
-      options = list(
-        pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-        dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
-        language = list(emptyTable = "Enter inputs and press Render Table")
-        
-        #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
-      )
-    )
+      input$button5
+      isolate({
+        datatable(initial_states_data_list()$All_States,
+                  rownames = FALSE,
+                  #extensions = c('Buttons'),
+                  #for slider filter instead of text input
+                  filter = 'top',
+                  options = list(
+                    pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+                    dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+                    language = list(emptyTable = "Enter inputs and press Render Table")
+                    
+                    #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+                  )
+        ) %>%
+          formatStyle(
+            columns = c(1:ncol(initial_states_data_list()$All_States))
+            
+          )
+      })
+      
+      
+      # initial_states_data(),
+      # rownames = FALSE,
+      # #extensions = c('Buttons'),
+      # #for slider filter instead of text input
+      # filter = 'top',
+      # options = list(
+      #   pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+      #   dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+      #   language = list(emptyTable = "Enter inputs and press Render Table")
+      #   
+      #   #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+      # )
+    })
+    
+    output$states2 <- renderDT({
+      
+      
+      datatable(initial_states_data_list()$Days_and_states_wide,
+                rownames = FALSE,
+                
+                filter = 'top',
+                options = list(
+                  pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+                  dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+                  language = list(emptyTable = "Enter inputs and press Render Table")
+                  
+                  #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+                )
+      ) %>%
+        formatStyle(
+          columns = c(1:ncol(initial_states_data_list()$All_States)),
+          
+        )
+      
+    })
     
 
 # Download Handlers -------------------------------------------------------

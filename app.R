@@ -207,7 +207,7 @@ ui <- fluidPage(
                          conditionalPanel(condition = "input.button4 == true",
                                           textInput("textinput2", label = "Filter by TAG"),
                                           pickerInput(inputId = "picker4",
-                                                      label = "Select Release Site:",
+                                                      label = "Select number of daily unique events:",
                                                       choices = c(1:5), #will need to be updated later on for uniqueness
                                                       selected = c(1:5),
                                                       multiple = TRUE,
@@ -453,25 +453,22 @@ server <- function(input, output, session) {
         
     })
     
-    # filtered_states_data <- eventReactive(input$button5,{
-    #   
-    #   states_data1 <- initial_states_data_list()All_States %>%
-    #     filter(
-    #       daily_unique_events %in% picker4
-    #     )
-    # 
-    #   # if(input$textinput1 !=''){
-    #   #   states_data1 <- initial_states_data_list()$All_States %>%
-    #   #     filter(TAG == input$textinput2)
-    #   # } else {
-    #   #   states_data1 <- initial_states_data_list()$All_States
-    #   # }
-    # 
-    # 
-    #   return(states_data1)
-    # })
-    
-    
+    filtered_states_data <- eventReactive(input$button5,{
+
+      states_data1 <- initial_states_data_list()$All_States %>%
+        filter(
+          daily_unique_events %in% input$picker4
+        )
+      
+      return(states_data1)
+    }) 
+
+      # if(input$textinput1 !=''){
+      #   states_data1 <- initial_states_data_list()$All_States %>%
+      #     filter(TAG == input$textinput2)
+      # } else {
+      #   states_data1 <- initial_states_data_list()$All_States
+      # }
 
 # Datatable renders -------------------------------------------------------
 
@@ -596,12 +593,16 @@ server <- function(input, output, session) {
 
       
     })
-    
+
+# States Datatable Renders ------------------------------------------------
+
+
     output$states1 <- renderDT({
       
       input$button5
       isolate({
-        datatable(initial_states_data_list()$All_States,
+        datatable(
+          filtered_states_data(), #initial_states_data_list()$All_States
                   rownames = FALSE,
                   #extensions = c('Buttons'),
                   #for slider filter instead of text input

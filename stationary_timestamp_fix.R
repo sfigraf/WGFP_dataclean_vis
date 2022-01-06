@@ -5,7 +5,7 @@ problem_times <- Stationary %>%
   filter(str_length(ARR) < 8) %>%
   mutate(month111 = month(DTY)) 
 
-#gets which ecat days are problematic
+#gets which exact days are problematic
 problem_times %>%
   distinct(DTY) 
 

@@ -17,11 +17,11 @@ library(bslib)
 
 
 # if column names change in any of these read-ins, might require some modification to code to get them to combine
-Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
+Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv")) #WGFP_Raw_20211130.csv
 Mobile <- read.csv("WGFP_Mobile_Detect_AllData.csv" , colClasses= c(rep("character",14), rep("numeric", 4), rep("character", 3)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
-Release <- read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
-Recaptures <- read.csv("WGFP_RecaptureData_Master.csv", colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
+Release <- read.csv("WGFP_ReleaseData_Master.csv", na.strings = c(""," ","NA"), colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
+Recaptures <- read.csv("WGFP_RecaptureData_Master.csv", na.strings = c(""," ","NA"), colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
 
 
 #  

@@ -21,6 +21,20 @@ Stationary = read.csv(paste0("WGFP_Raw_20211130.csv"))
 # Read mobile antenna detections
 Mobile = read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 
+Mobile_2 <- read.csv("WGFP_Mobile_Detect_AllData.csv" , colClasses= c(rep("character",14), rep("numeric", 4), rep("character", 3)))
+
+Mobile_condensed <- Mobile_2 %>%
+  rename(TAG = TagID) %>%
+  mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG),
+         Date = ifelse(str_detect(Date, "/"), 
+                             as.character(mdy(Date)), 
+                             Date)) %>% #end of mutate
+  select(Date, Time, TAG, Ant, UTM_X, UTM_Y) %>%
+  rename(Scan_Date = Date, Scan_Time = Time, Site_Code = Ant)
+
+
+
+
 WGFP_Mobile_Detect_AllData <- read_csv("most_current_to_integrate/WGFP_Mobile_Detect_AllData.csv", 
                                        +     col_types = cols(TagID = col_character()))
 #Read Biomark
@@ -1628,3 +1642,70 @@ a2 <- a1 %>%
   
 
 x <- data.frame("Date" = c("2020-12-31", "2020-12-31", "2021-01-01", "2021-01-02", "2021-01-03", "2021-01-04"), "Event" = c("HP4", "HP3", "HP3", "RB2", "HP3", "HP3"))
+
+# Bad Timestamps between 12:00 and 1:00 -----------------------------------
+
+
+### fixing bad timestamps between 12/10 and 1/30
+library(plotly)
+x <- all_events %>%
+  distinct(Date, Event, TAG, .keep_all = TRUE) %>%
+  #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
+  ggplot(aes(x = Date, y = Time, color = Event)) +
+  geom_point() +
+  theme_classic() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+
+
+ggplotly(x) 
+
+#this is 
+timestamp_problems <- Stationary %>%
+  filter(DTY >= "2020-12-10" & DTY <= "2021-02-02", 
+         #str_detect(ARR, c("AM","PM"))
+         ) %>%
+  mutate(ARR1 = case_when(str_detect(ARR, "AM") ~ hms(ARR) ,
+                                str_detect(ARR, "PM") ~ hms(ARR) + hours(12),
+                                #if it doesn't detect PM or AM just do hms(ARR)
+                                str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR))
+  ) %>%
+  mutate(ARR2 = as.character(as_datetime(ARR1)), 
+         ARR3 = hms::as_hms(str_sub(ARR2, start = 11, end = -1))) %>%
+  filter(
+         ARR3 >= hms::as_hms('12:00:00'),
+         ARR3 <= hms::as_hms('13:00:00'),
+         str_detect(ARR, c("AM|PM"))
+         ) %>%
+  select(-c(ARR1, ARR2, ARR3))
+
+##this gets a dataset without the problem times
+#this is what I need to join to clean data
+
+no_problems <- anti_join(Stationary, timestamp_problems)
+
+#after combining .txt files in the app, bring that csv file in to combine with other dataset
+# note: there was no RB1 data for 20210202; inly 1 entry in the .txt file
+no_problem_times <- read.csv("no_problem_times.csv", colClasses= c(rep("character",10), "numeric"))
+
+#remove ghost tag that was on RB
+no_problem_times1 <- no_problem_times %>%
+  filter(!TAG %in% c("900_230000228791"))
+
+New_Stationary <- bind_rows(no_problems, no_problem_times1)
+
+
+#shows that differences are actually no real detections
+difs <- anti_join(stationary1, no_problem_times1, by = c("Code", "DTY"))
+
+write_csv(New_Stationary, "New_Stationary.csv")
+
+
+  
+  #mutate(x11 = str_detect(ARR, c("AM|PM")))
+  
+  
+  
+  filter(ARR3 <= "01:00:00"  )
+  # select(-ARR) %>%
+  # rename(ARR = ARR3)

@@ -100,7 +100,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
       #datetime1 = as.POSIXct(paste(Scan_Date, Scan_Time),format="%Y-%m-%d %H:%M:%S"), #this line works too
            datetime2 = ymd_hms(paste(Scan_Date, Scan_Time))) %>%
     rename(Scan_DateTime = datetime2) %>%
-    select(Scan_Date, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
+    select(Scan_Date, Scan_Time, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
   
 ### all detections and recaps and release "EVENTS" DF
   
@@ -112,13 +112,14 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            Time1 = as_datetime(hms(Time)), #warning message: problem with mutate(time1, some strings failed to parse); same with recaps # fixed by changing to hms() newest release file 20211229 has times with seconds 
            Time2 = str_sub(Time1, start = 11, end = -1),
            DateTime = ymd_hms(paste(Date, Time2))) %>%
-    select(RS_Num,River,ReleaseSite,Date,DateTime,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) 
+    select(RS_Num,River,ReleaseSite,Date, Time2, DateTime,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) %>%
+    rename(Time = Time2) 
   
   #getting timestamps in order and getting relevant columns
   
   recaps1 <- Recaptures %>%
     rename(TAG = TagID) %>%
-    filter(!Date %in% c("", " ")) %>%
+    filter(!Date %in% c("", " ", NA)) %>%
     mutate(TAG = str_trim(TAG),
            Date = mdy(Date),
            Time1 = as_datetime(hm(Time)),
@@ -134,6 +135,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   All_Detections_1_merge <- All_detections %>%
     mutate(Date = as.Date(Scan_Date)) %>%
     rename(
+      Time = Scan_Time,
       DateTime = Scan_DateTime,
       Event = Site_Code) 
   
@@ -144,6 +146,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   recaps_detections <- bind_rows(All_Detections_1_merge, recaps1)
   
   detections_release_recaps <- bind_rows(recaps_detections, Release1)
+  
+  
   # bind rows vs left join; bind rows will make it so there is a "release" or "recapture" event and also make columns with relevant info
   
 
@@ -158,9 +162,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   # 87 rows were not even showing up on the all_events app because the Species was NA -12/14/21 SG
   
   filled_in_release_rows_condensed <- filled_in_release_rows %>%
-    select(Date.x, DateTime.x, TAG, Event.x, Species.y, Length.y, Weight.y, ReleaseSite.y, Date.y, RecaptureSite, Recap_Length, Recap_Weight, UTM_X.x, UTM_Y.x) %>%
+    select(Date.x, Time.x, DateTime.x, TAG, Event.x, Species.y, Length.y, Weight.y, ReleaseSite.y, Date.y, RecaptureSite, Recap_Length, Recap_Weight, UTM_X.x, UTM_Y.x) %>%
     rename(Release_Date = Date.y,
            Date = Date.x,
+           Time = Time.x,
            Datetime = DateTime.x,
            Event = Event.x,
            Species = Species.y,
@@ -279,7 +284,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            CF = (CF5_n > 0 | CF6_n >0),
            Biomark = (B3_n > 0 | B4_n >0),
            Mobile = (M1_n > 0 | M2_n >0)) %>%
-    filter(!UTM_X %in% 0) # one way to filter out tags that don't have any sort of release data; usually if they're entered in release file then they have UTM's
+    filter(!UTM_X %in% c(0, NA)) # one way to filter out tags that don't have any sort of release data; usually if they're entered in release file then they have UTM's
   
   df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_detections, 
                   "All_Events" = filled_in_release_rows_condensed, "Unknown_Tags" = unknown_tags)

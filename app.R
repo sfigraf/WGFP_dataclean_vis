@@ -18,7 +18,7 @@ library(bslib)
 
 # if column names change in any of these read-ins, might require some modification to code to get them to combine
 Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv"))
-Mobile <- read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
+Mobile <- read.csv("WGFP_Mobile_Detect_AllData.csv" , colClasses= c(rep("character",14), rep("numeric", 4), rep("character", 3)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv",colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
 Recaptures <- read.csv("WGFP_RecaptureData_Master.csv", colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
@@ -26,7 +26,7 @@ Recaptures <- read.csv("WGFP_RecaptureData_Master.csv", colClasses = c(rep("char
 
 #  
 Mobile <- Mobile %>%
-    mutate(MobileDate = as.character(mdy(MobileDate)))
+    mutate(Date = as.character(mdy(Date)))
 
 Release_05 <- Release %>%
   mutate(Date = as.character(mdy(Date)))
@@ -99,6 +99,9 @@ ui <- fluidPage(
                        
                       mainPanel(tabsetPanel(
                         tabPanel("Stationary Clean",
+                                 hr(),
+                                 downloadButton(outputId = "download3", label = "Save this data as CSV"),
+                                 hr(),
                                  withSpinner(DT::dataTableOutput("stationary1"))),
                         tabPanel("Biomark",
                                  withSpinner(DT::dataTableOutput("biomark1"))),
@@ -316,7 +319,7 @@ server <- function(input, output, session) {
         filter(Scan.Date >= input$drangeinput1[1] & Scan.Date <= input$drangeinput1[2])
       
       mobile_filtered <- Mobile %>%
-        filter(MobileDate >= input$drangeinput1[1] & MobileDate <= input$drangeinput1[2])
+        filter(Date >= input$drangeinput1[1] & Date <= input$drangeinput1[2])
       
       recaps_filtered <- Recaptures_05 %>%
         filter(Date >= input$drangeinput1[1] & Date <= input$drangeinput1[2])
@@ -692,7 +695,7 @@ server <- function(input, output, session) {
         
         
       }
-    ) #end of download2
+    ) #end of download1
     
     output$download2 <- downloadHandler(
       filename = 
@@ -702,6 +705,19 @@ server <- function(input, output, session) {
       ,
       content = function(file) {
         write_csv(enc_hist_data_list()$allevents_data, file)
+        
+        
+      }
+    ) #end of download2
+    
+    output$download3 <- downloadHandler(
+      filename = 
+        function() {
+          paste0("StationaryClean_",most_recent_date,".csv")
+        }
+      ,
+      content = function(file) {
+        write_csv(indiv_datasets_list()$stationarycleandata, file)
         
         
       }

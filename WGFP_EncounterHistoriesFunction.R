@@ -67,13 +67,15 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     select(Scan.Date, Scan.Time, TAG, Reader.ID, UTM_X, UTM_Y) %>%
     rename(Scan_Date = Scan.Date, Scan_Time = Scan.Time, Site_Code = Reader.ID, UTM_X = UTM_X, UTM_Y = UTM_Y)
   
-  Mobile_condensed <- Mobile %>%
+  Mobile_condensed <- Mobile %>% #gonna have to just change to mobile eventually
+    rename(TAG = TagID) %>%
     mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG),
-           MobileDate = ifelse(str_detect(MobileDate, "/"), 
-                               as.character(mdy(MobileDate)), 
-                               MobileDate)) %>% #end of mutate
-    select(MobileDate, MobileTime, TAG, MobileAnt, MobileUTM_X, MobileUTM_Y) %>%
-    rename(Scan_Date = MobileDate, Scan_Time = MobileTime, Site_Code = MobileAnt, UTM_X = MobileUTM_X, UTM_Y = MobileUTM_Y)
+           Date = ifelse(str_detect(Date, "/"), 
+                         as.character(mdy(Date)), 
+                         Date)) %>% #end of mutate
+    select(Date, Time, TAG, Ant, UTM_X, UTM_Y) %>%
+    rename(Scan_Date = Date, Scan_Time = Time, Site_Code = Ant)
+  
   
   WG_bio <- bind_rows(WGFP_condensed,Biomark_condensed)
   All_detections <- bind_rows(WG_bio, Mobile_condensed)
@@ -107,7 +109,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     rename(TAG = TagID) %>%
     mutate(TAG = str_trim(TAG),
            Date = mdy(Date),
-           Time1 = as_datetime(hm(Time)),
+           Time1 = as_datetime(hms(Time)), #warning message: problem with mutate(time1, some strings failed to parse); same with recaps # fixed by changing to hms() newest release file 20211229 has times with seconds 
            Time2 = str_sub(Time1, start = 11, end = -1),
            DateTime = ymd_hms(paste(Date, Time2))) %>%
     select(RS_Num,River,ReleaseSite,Date,DateTime,UTM_X,UTM_Y,Species,Length,Weight,TAG,TagSize,Ant,Event) 
@@ -116,6 +118,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   
   recaps1 <- Recaptures %>%
     rename(TAG = TagID) %>%
+    filter(!Date %in% c("", " ")) %>%
     mutate(TAG = str_trim(TAG),
            Date = mdy(Date),
            Time1 = as_datetime(hm(Time)),

@@ -198,7 +198,7 @@ ui <- fluidPage(
 # States/Movements UI -----------------------------------------------------
 
 
-            tabPanel("States, Movements, and their Visuals",
+            tabPanel("Daily States and Movements",
                      sidebarLayout(
                        sidebarPanel(
                          actionButton("button4", label = "Get States: Takes ~ 45 seconds", width = "100%",
@@ -208,8 +208,20 @@ ui <- fluidPage(
                                           textInput("textinput2", label = "Filter by TAG"),
                                           pickerInput(inputId = "picker4",
                                                       label = "Select number of daily unique events:",
-                                                      choices = c(1:5), #will need to be updated later on for uniqueness
+                                                      choices = c(1:6), #will need to be updated later on for uniqueness
                                                       selected = c(1:5),
+                                                      multiple = TRUE,
+                                                      options = list(
+                                                        `actions-box` = TRUE #this makes the "select/deselect all" option
+                                                      )
+                                                      
+                                                      
+                                          ), #end of picker 4 input 
+                                          
+                                          pickerInput(inputId = "picker5",
+                                                      label = "States:",
+                                                      choices = c(LETTERS[1:12]), #will need to be updated later on for uniqueness
+                                                      selected = c(LETTERS[1:12]),
                                                       multiple = TRUE,
                                                       options = list(
                                                         `actions-box` = TRUE #this makes the "select/deselect all" option
@@ -274,6 +286,19 @@ server <- function(input, output, session) {
                         value = NULL)
     
   }) #end of reset 
+  
+  #when button to make States DF list is pressed, update these picker options
+  observeEvent(input$button4,{
+    updatePickerInput(session, "picker4",
+                      choices = sort(unique(initial_states_data_list()$All_States$daily_unique_events)),
+                      selected = unique(initial_states_data_list()$All_States$daily_unique_events)
+    )
+    
+    updatePickerInput(session, "picker5",
+                      choices = sort(unique(initial_states_data_list()$All_States$State)),
+                      selected = unique(initial_states_data_list()$All_States$State)
+    )
+  })
     
 
 # Ind D Reactives ---------------------------------------------------------
@@ -437,38 +462,35 @@ server <- function(input, output, session) {
 # States data reactives ---------------------------------------------------
 
     #want it so that when the first button4 is pressed, the whole dataset is made
-    #then after that i want to render the table with button5
+    #then after that i want to render the table with button5 along with filters
     initial_states_data_list <- eventReactive(input$button4,{
       states_data1_list <- get_states_function(df_list$All_Events)
-      #removeUI(selector = "#button4", immediate = TRUE)
-      
-        # if(input$textinput1 !=''){
-        #   states_data1 <- states_data1 %>%
-        #     filter(TAG == input$textinput2)
-        # } else {
-        #   states_data1 <- states_data1
-        # }
-
       return(states_data1_list)
         
     })
     
     filtered_states_data <- eventReactive(input$button5,{
+      
+      if(input$textinput2 != ''){ 
+        states_data1 <- initial_states_data_list()$All_States %>%
+          filter(TAG %in% c(input$textinput2),
+                 daily_unique_events %in% input$picker4,
+                 State %in% input$picker5
+                 )
+      } else { 
+        states_data1 <- initial_states_data_list()$All_States %>%
+          filter(
+            daily_unique_events %in% input$picker4,
+            State %in% input$picker5
+          )      
+        }
 
-      states_data1 <- initial_states_data_list()$All_States %>%
-        filter(
-          daily_unique_events %in% input$picker4
-        )
+      
       
       return(states_data1)
     }) 
 
-      # if(input$textinput1 !=''){
-      #   states_data1 <- initial_states_data_list()$All_States %>%
-      #     filter(TAG == input$textinput2)
-      # } else {
-      #   states_data1 <- initial_states_data_list()$All_States
-      # }
+      
 
 # Datatable renders -------------------------------------------------------
 
@@ -650,11 +672,8 @@ server <- function(input, output, session) {
                   
                   #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
                 )
-      ) %>%
-        formatStyle(
-          columns = c(1:ncol(initial_states_data_list()$All_States)),
-          
-        )
+      ) 
+        
       
     })
     

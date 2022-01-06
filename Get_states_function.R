@@ -39,9 +39,13 @@ get_states_function <- function(All_events) {
     
     group_by(TAG) %>%
     mutate(
-      previous_event = lag(Event, order_by = Datetime)) %>%
+      previous_event = lag(Event, order_by = Datetime),
+      next_event = lead(Event, order_by = Datetime),
+      next_event_2 = lead(Event, n = 2, order_by = Datetime),
+      
+      same_day_next_events = (lead(Date, order_by = Datetime) == lead(Date, n = 2, order_by = Datetime))) %>%
     
-    select(Date, Datetime,TAG,Event,ReleaseSite,Species, Release_Length, Release_Weight, Release_Date, RecaptureSite, days_since, first_last, previous_event,c_number_of_detections, daily_unique_events) 
+    select(Date, Datetime,TAG,Event,ReleaseSite,Species, Release_Length, Release_Weight, Release_Date, RecaptureSite, days_since, first_last, previous_event, next_event, next_event_2, same_day_next_events,c_number_of_detections, daily_unique_events) 
 
   r1 <- All_events_days1 %>%
     # no need to group_by date until states will be consolidated
@@ -134,7 +138,64 @@ get_states_function <- function(All_events) {
                                       
       ),
       
+      next_event_vals = case_when(next_event == "RB1" ~ 11.9,
+                                      next_event == "RB2" ~ 11.1,
+                                      next_event == "HP3" ~ 7.9,
+                                      next_event == "HP4" ~ 7.1,
+                                      next_event == "CF5" ~ 4.9,
+                                      next_event == "CF6" ~ 4.1,
+                                      next_event == "B3" ~ 6,
+                                      next_event == "B4" ~ 1,
+                                      
+                                      #using str_detect with "Release" gets both Release events and "recap and release" events
+                                      ### may not need this section since you'd assume that release is never going to happen AFTER detections; 
+                                      # but there is that time in may 2021 with the mark recapture study where there are (230000) 272140, 272063, 272153, 272273, and 142517 that have detections before official "release"
+                                      str_detect(next_event, "Release") & ReleaseSite == "Lower River Run" ~ 4,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Fraser River Ranch" ~ 2,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Kaibab Park" ~ 1,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Upper River Run" ~ 3,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Below Confluence Antenna" ~ 5,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Windy Gap Dam" ~ 6,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Hitching Post" ~ 7,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Chimney Rock Above Island" ~ 8,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Chimney Rock Below Island" ~ 9,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Upper Red Barn Fry Site" ~ 10,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Pool Above Red Barn Antenna" ~ 11,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Lower Red Barn Fry Site" ~ 12,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Below Red Barn Diversion #1" ~ 13,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Below Red Barn Diversion #2" ~ 14,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Kinney Creek" ~ 15,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Dark Timber Above Railroad" ~ 16,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Sheriff Ranch Upper Field" ~ 17,
+                                      str_detect(next_event, "Release") & ReleaseSite == "Shefiff Ranch Middle Field" ~ 18, #will need to be changed once this typo is corrected
+                                      str_detect(next_event, "Release") & ReleaseSite == "Sheriff Ranch Fry Site" ~ 19,
+                                      
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower River Run" ~ 4,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Fraser River Ranch" ~ 2,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kaibab Park" ~ 1,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper River Run" ~ 3,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Confluence Antenna" ~ 5,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Windy Gap Dam" ~ 6,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Hitching Post" ~ 7,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Above Island" ~ 8,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Below Island" ~ 9,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper Red Barn Fry Site" ~ 10,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Pool Above Red Barn Antenna" ~ 11,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower Red Barn Fry Site" ~ 12,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #1" ~ 13,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #2" ~ 14,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kinney Creek" ~ 15,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Dark Timber Above Railroad" ~ 16,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Upper Field" ~ 17,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Shefiff Ranch Middle Field" ~ 18,
+                                      next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Fry Site" ~ 19
+                                      
+                                      
+      ),
+      
       movement = case_when(
+        
+        
         #if the values are more or less than previous values, it's moved upstream or downstream
         (current_event_vals > previous_event_vals) ~ "Downstream Movement",
         (current_event_vals < previous_event_vals) ~ "Upstream Movement",
@@ -162,7 +223,10 @@ get_states_function <- function(All_events) {
         #this says that if the fish came from upstream and hit only one antenna one time, it's assumed to have continued downstream and just missed hitting the other downstream antenna
         current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (daily_unique_events == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement without hitting both antennas"),
       
-      teststate_11 = case_when(movement %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "L",
+      teststate_11 = case_when(
+                               movement %in% c("Not Enough Info") ~ "NEI",
+        
+                               movement %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "L",
                                movement %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "K",
                                movement %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas") & (Event %in% c("HP3", "HP4")) ~ "J",
                                movement %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas") & (Event %in% c("HP3", "HP4")) ~ "I",
@@ -243,20 +307,23 @@ get_states_function <- function(All_events) {
     )  %>%
     mutate(teststate_4 = gsub('([[:alpha:]])\\1+', '\\1', teststate_2)) %>% #removes consecutive letters
     distinct(Date, TAG, teststate_4, .keep_all = TRUE) %>%
-    select(Date, Datetime, TAG, teststate_4, ReleaseSite, Species, Release_Length, Release_Weight, movement, c_number_of_detections, daily_unique_events, days_since)
+    select(Date, Datetime, TAG, teststate_4, ReleaseSite, Species, Release_Length, Release_Weight, movement, c_number_of_detections, daily_unique_events, days_since) %>%
+    rename(State = teststate_4)
+  
+  
           
   #testState4 is really the realState
   # r3 <- r2 %>%
-  #   # mutate(New_movt = case_when(teststate_4 %in% c("GH", "HG","LK","KL", "IJ","JI") ~ "No Net Movement",
-  #   #                             teststate_4 %in% c("K","I","G")~ "Upstream Movement",
-  #   #                             teststate_4 %in% c("L","J", "H") ~ "Downstream Movement",
-  #   #                             teststate_4 == lag(teststate_4, order_by = Datetime) ~ "No Net Movement",
-  #   #                             teststate_4 != lag(teststate_4, order_by = Datetime) & (teststate_4 > lag(teststate_4, order_by = Datetime)) ~ "Upstream Movement",
-  #   #                             teststate_4 != lag(teststate_4, order_by = Datetime) & (teststate_4 < lag(teststate_4, order_by = Datetime)) ~ "Downstream Movement")
+  #   # mutate(New_movt = case_when(State %in% c("GH", "HG","LK","KL", "IJ","JI") ~ "No Net Movement",
+  #   #                             State %in% c("K","I","G")~ "Upstream Movement",
+  #   #                             State %in% c("L","J", "H") ~ "Downstream Movement",
+  #   #                             State == lag(State, order_by = Datetime) ~ "No Net Movement",
+  #   #                             State != lag(State, order_by = Datetime) & (State > lag(State, order_by = Datetime)) ~ "Upstream Movement",
+  #   #                             State != lag(State, order_by = Datetime) & (State < lag(State, order_by = Datetime)) ~ "Downstream Movement")
   #   #                     )
   #   
   #   
-  #   select(Date, Datetime,TAG,Event,teststate_4, movement, ReleaseSite,RecaptureSite, days_since, first_last, previous_event)
+  #   select(Date, Datetime,TAG,Event,State, movement, ReleaseSite,RecaptureSite, days_since, first_last, previous_event)
   
 
 # Pivot_wider -------------------------------------------------------------
@@ -266,7 +333,7 @@ get_states_function <- function(All_events) {
   days_and_states <- full_join(days, r2, by = "days_since")
   
   
-  days_and_states_wide <- pivot_wider(days_and_states, id_cols = TAG, names_from = days_since, values_from = teststate_4)
+  days_and_states_wide <- pivot_wider(days_and_states, id_cols = TAG, names_from = days_since, values_from = State)
   
   states_df_list <- list("All_States" = r2, "Days_and_states_wide" = days_and_states_wide)
   #this just tells how long the fucntion takes
@@ -277,8 +344,8 @@ get_states_function <- function(All_events) {
 }
 
 
-#statesdf_list <- get_states_function(All_events)
-#statesdf <- statesdf_list$All_States
+# statesdf_list <- get_states_function(All_events)
+# statesdf <- statesdf_list$All_States
 #####################
 
 # u4 <- u3 %>%
@@ -391,3 +458,53 @@ get_states_function <- function(All_events) {
 # # apply to all tags
 # # fill out full list of values and case_when for recaps and all release sites
 # # see if I can corporate release event and state
+
+
+#if the values are more or less than previous values, it's moved upstream or downstream
+# (current_event_vals > previous_event_vals) ~ "Downstream Movement",
+# (current_event_vals < previous_event_vals) ~ "Upstream Movement",
+# 
+# #if the values are the same and the day is the same, it means there was multiple consecutive detections at the same antenna and same day 
+# current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) ~ "No Movement; Same Day",
+# 
+# #if the vals are the same but the day is different, and the previous event was a stagnant physical state (B3, b4, release, etc) then there was no movement and the fish is in the same state it was
+# current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & previous_event %in% c("B3", "B4", "Release", "Recapture", "Recapture and Release") ~ "No Movement",
+# 
+# 
+# 
+# #if a fish ended the previous detection upstream of an antenna, then hits the same antenna again AND hits a different event that day (probably the other antenna detection from that site), it's a downstream movement
+# current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (daily_unique_events > 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement1", # & (c_number_of_detections > 1)
+# 
+# #if a fish ended the previous detection downstream of an antenna, then hits the same antenna again AND has a different event that day (probably the other antenna detection from that site), it's a upstream movement
+# current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime)  & (daily_unique_events > 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement1", #& (c_number_of_detections > 1)
+# 
+# ## if same thing but same_day next events == FALSE then there is not enough info 
+# # current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (daily_unique_events == 1) & (same_day_next_events == FALSE) ~ "Not Enough Info",
+# # 
+# # # if a fish's previous values and curent event values are the same and occur on a different date, and only hits one antenna that day
+# # # then next day it is detected multiple times (same_day_next_events == TRUE) the fish next makes a downstream movement (next_event_2_vals > next_event_vals),
+# # # then the current event is actually an upstream movement
+# # 
+# # current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (daily_unique_events == 1) & (same_day_next_events == TRUE) & (next_event_2_vals > next_event_vals) ~ "Upstream Movement11",
+# # 
+# # 
+# # # if a fish's previous values and curent event values are the same and occur on a different date, and only hits one antenna that day
+# # # then next day it is detected multiple times (same_day_next_events == TRUE) the fish next makes a upstream movement (next_event_2_vals < next_event_vals),
+# # # then the current event is actually an downstream movement  
+# # 
+# # current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (daily_unique_events == 1) & (same_day_next_events == TRUE) & (next_event_2_vals < next_event_vals) ~ "Downstream Movement11",
+# # 
+# # 
+# # 
+# 
+# #this says that if a fish ended the previous detection upstream of a antenna, then hits the same antenna again multiple times without hitting the next downstream antenna, 
+# #but the next 2 events are a upstream move at that antenna, there isn't enough info to assume movement 
+# current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (daily_unique_events == 1) & previous_event %in% c("CF6", "HP4", "RB2") & ~ "Not Enough Info", #down then back up move
+# 
+# #this says that if a fish ended the previous detection downstream of a antenna, then hits the same antenna again multiple times without hitting the next upstream antenna, there isn't enough info to assume movement 
+# current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (daily_unique_events == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Not Enough Info", #Up then back down move
+# 
+# #this says that if the fish ended the previous detection downstream of a antenna and hit the same antenna once, there isn't enough info to assume movement
+# current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (daily_unique_events == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Not Enough Info", #Upstream Movement without hitting both antennas
+# #this says that if the fish came from upstream and hit only one antenna one time, there isn't enough info to assume movement
+# current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (daily_unique_events == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Not Enough Info"), #Downstream Movement without hitting both antennas

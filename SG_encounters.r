@@ -21,9 +21,15 @@ Stationary = read.csv(paste0("WGFP_Raw_20211130.csv"))
 # Read mobile antenna detections
 Mobile = read.csv("WGFP_MobileDetections.csv", colClasses=c(rep("character",10)))
 
+WGFP_Mobile_Detect_AllData <- read_csv("most_current_to_integrate/WGFP_Mobile_Detect_AllData.csv", 
+                                       +     col_types = cols(TagID = col_character()))
 #Read Biomark
+
+Biomark_Raw_20211109_1 <- read_csv("Biomark_Raw_20211109_1.csv", 
+                                   col_types = cols(`DEC Tag ID` = col_character()))
+
 # need to be put in with decimal registering as "," because otherwise it won't bring in the full DEC.Id tag
-#biomark1 <- read_csv("Biomark_Raw_20211109.csv", col_types = "cccccccccccccccc")
+biomark1 <- read_csv("Biomark_Raw_20211109_1.csv", col_types = "cccccccccccccccc")
 # biomark_col_names <- c("Scan.Date","Scan.Time","Download.Date", "Download.Time" ,"Reader.ID","Antenna.ID","HEX.Tag.ID","DEC.Tag.ID","Temperature.C",
 #     "Signal.mV","Is.Duplicate","Latitude","Longitude","File.Name")
 # b <- read_csv("Biomark_Raw_20211109.csv", col_types = "ctcccccccccccccc", col_names = biomark_col_names)
@@ -708,6 +714,54 @@ days_and_states <- full_join(days, statesdf, by = "days_since")
 
 days_and_states_wide <- pivot_wider(days_and_states, id_cols = TAG, names_from = days_since, values_from = teststate_4)
 #test_wider <- pivot_wider(data = x1, id_cols = TAG, names_from = days_since, values_from = Event)
+####states new movemnt
+
+statesdf_list <- get_states_function(All_events)
+statesdf <- statesdf_list$All_States
+
+x <- statesdf %>%
+  group_by(TAG) %>%
+    mutate(New_movt = case_when(State %in% c("GH", "HG","LK","KL", "IJ","JI") ~ "No Net Movement",
+                                State %in% c("K","I","G")~ "Upstream Movement",
+                                State %in% c("L","J", "H") ~ "Downstream Movement",
+                                # State == lag(State, order_by = Datetime) ~ "No Net Movement",
+                                # State != lag(State, order_by = Datetime) & (State > lag(State, order_by = Datetime)) ~ "Upstream Movement",
+                                # State != lag(State, order_by = Datetime) & (State < lag(State, order_by = Datetime)) ~ "Downstream Movement")
+                        )# end of case_when
+    )
+
+x1 <- x %>%
+  #filter(!is.na(New_movt))
+  filter(str_detect(New_movt,"Downstream Movement"))
+  
+
+x1 <- x %>%
+  filter(!is.na(New_movt)) %>%
+  arrange(Datetime) %>%
+  ggplot(aes(x = Date, fill = New_movt)) +
+  geom_bar() +
+  scale_x_date(date_labels = "%m-%Y" #date_breaks = "1 month"
+               ) +
+  theme_classic()
+
+ggplotly(x1)
+
+
+
+data <- data.frame(
+  day = as.Date("2017-06-14") - 0:364,
+  value = runif(365) + seq(-140, 224)^2 / 10000
+)
+
+# Most basic bubble plot
+p <- ggplot(data, aes(x=day, y=value)) +
+  geom_line() + 
+  xlab("")
+p
+
+str(x1$Date)
+
+select(Date, Datetime,TAG,Event,State, movement, ReleaseSite,RecaptureSite, days_since, first_last, previous_event)
 
 if (x3$State[non_na_rows[i]] == "F" & x3$State[non_na_rows[i+1]] == "L") {
   
@@ -1572,3 +1626,5 @@ a2 <- a1 %>%
 #   and any unique antennas in the middle of those
 # }
   
+
+x <- data.frame("Date" = c("2020-12-31", "2020-12-31", "2021-01-01", "2021-01-02", "2021-01-03", "2021-01-04"), "Event" = c("HP4", "HP3", "HP3", "RB2", "HP3", "HP3"))

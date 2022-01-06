@@ -4,6 +4,8 @@ library(tidyverse)
 
 WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   
+  start_time <- Sys.time()
+  
   library(tidyverse)
   library(lubridate)
   
@@ -278,6 +280,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   
   df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_detections, 
                   "All_Events" = filled_in_release_rows_condensed, "Unknown_Tags" = unknown_tags)
+  
+  end_time <- Sys.time()
+  print(paste("EncounterHistories Function took", round(end_time-start_time,2), "Seconds"))
+  
   return(df_list)
 }
   

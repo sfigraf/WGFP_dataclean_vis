@@ -8,7 +8,7 @@ library(shinythemes)
 library(bslib)
 #Biomark is temporarily labelled as B3 and B4 to make data filtering easier
 # tieh the site_code %in% picker1 line, because B1 and B2 are technically "in" RB1 and Rb2, it would include them to be part of it 
-# so for now this is easier
+# so for now this is easier. but actually idk if this is true, it could have been some other problem
 # cntrl + shft + A to reformat chunks of code
 # rsconnect::showLogs(appName="WGFP_dataclean_vis",streaming=TRUE) will show logs when trying to load app browser
 # had "application failed to start" error and fixed both times with above command. both times because packages in local environment (tidyverse and lubridate) weren't called with library() command 
@@ -409,7 +409,8 @@ server <- function(input, output, session) {
                                         Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0")
           ) %>%
           ungroup() %>%
-          distinct(TAG, Event, Date, first_last, .keep_all = TRUE) %>%
+          #need to include UTM_X and UTM_Y so that you can get multiple daily detections of mobile antennas in different locations
+          distinct(TAG, Event, Date, first_last, UTM_X, UTM_Y, .keep_all = TRUE) %>%
           select(-first_last)
         
         
@@ -432,7 +433,7 @@ server <- function(input, output, session) {
                                           Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0")
             ) %>%
             ungroup() %>%
-            distinct(TAG, Event, Date, first_last, .keep_all = TRUE) %>%
+            distinct(TAG, Event, Date, first_last,  UTM_X, UTM_Y, .keep_all = TRUE) %>%
             select(-first_last) 
           
           

@@ -9,7 +9,7 @@
 # hitching post release site is below the antennas and if a fish released at hithcing post hits the hithcin post antennas, it's an upstream movement
 
 # no mobile detections incorporated for now
-#All_events <- df_list$All_Events
+All_events <- df_list$All_Events
 
 get_states_function <- function(All_events) {
   library(tidyverse) 
@@ -214,17 +214,17 @@ get_states_function <- function(All_events) {
         
         
         #this says that if a fish ended the previous detection upstream of a antenna, then hits the same antenna again multiple times without hitting the next downstream antenna, it's assumed to have then ended back upstream
-        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (daily_unique_events == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Down then back up move",
+        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (daily_unique_events == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ paste("Not Enough Info to infer movement-", Event, "only detection"), #Down then back up move
         #this says that if a fish ended the previous detection downstream of a antenna, then hits the same antenna again multiple times without hitting the next upstream antenna, it's assumed to have then ended back upstream
         
-        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (daily_unique_events == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Up then back down move",
+        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections > 1) & (daily_unique_events == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ paste("Not Enough Info to infer movement-", Event, "only detection"), # Up then back down move
         #this says that if the fish came from downstream and hit only one antenna one time, it's assumed to have continued upstream and just missed hitting the upstream antenna
-        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (daily_unique_events == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ "Upstream Movement without hitting both antennas",
+        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (daily_unique_events == 1) & previous_event %in% c("CF5", "HP3", "RB1") ~ paste("Not Enough Info to infer movement-", Event, "only detection"), #Upstream Movement without hitting both antennas
         #this says that if the fish came from upstream and hit only one antenna one time, it's assumed to have continued downstream and just missed hitting the other downstream antenna
-        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (daily_unique_events == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ "Downstream Movement without hitting both antennas"),
+        current_event_vals == previous_event_vals & Date != lag(Date, order_by = Datetime) & (c_number_of_detections == 1) & (daily_unique_events == 1) & previous_event %in% c("CF6", "HP4", "RB2") ~ paste("Not Enough Info to infer movement-", Event, "only detection") ), #Downstream Movement without hitting both antennas
       
       teststate_11 = case_when(
-                               movement %in% c("Not Enough Info") ~ "NEI",
+                               str_detect(movement, "Not Enough Info to infer movement") ~ "NEI",
         
                                movement %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "L",
                                movement %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "K",

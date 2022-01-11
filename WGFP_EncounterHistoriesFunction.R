@@ -26,12 +26,12 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     
     # mutate(TAG = case_when(str_detect(TAG, "^900") ~ str_sub(TAG, 4,-1),
     #                        str_detect(TAG, "!^900") ~ TAG)) %>%
-    mutate(UTM_X =case_when(SCD == "RB1" | SCD == "RB2" ~ "412607.7",
-                            SCD == "HP3" | SCD == "HP4" ~ "414375.4",
-                            SCD == "CF5" | SCD == "CF6" ~ "416965.0"),
-           UTM_Y = case_when(SCD == "RB1" | SCD == "RB2" ~ "4439503.0",
-                             SCD == "HP3" | SCD == "HP4" ~ "4440241.0",
-                             SCD == "CF5" | SCD == "CF6" ~ "4439369.0")) %>%
+    mutate(UTM_X =case_when(SCD == "RB1" | SCD == "RB2" ~ "412608",
+                            SCD == "HP3" | SCD == "HP4" ~ "414375",
+                            SCD == "CF5" | SCD == "CF6" ~ "416965"),
+           UTM_Y = case_when(SCD == "RB1" | SCD == "RB2" ~ "4439503",
+                             SCD == "HP3" | SCD == "HP4" ~ "4440241",
+                             SCD == "CF5" | SCD == "CF6" ~ "4439369")) %>%
     distinct()
   
   # biomark cleaning, getting dates into uniform format, 
@@ -50,8 +50,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     
     # from gis: B1 416127.3, 4440146
     #B2: 420727.9, 4437221
-    mutate(UTM_X =case_when(Reader.ID == "B3" ~ "416127.3",
-                            Reader.ID == "B4" ~ "420727.9"),
+    mutate(UTM_X =case_when(Reader.ID == "B3" ~ "416127",
+                            Reader.ID == "B4" ~ "420728"),
            UTM_Y = case_when(Reader.ID == "B3" ~ "4440146",
                              Reader.ID == "B4" ~ "4437221")) %>%
     distinct()
@@ -174,6 +174,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            ReleaseSite = ReleaseSite.y,
            UTM_X = UTM_X.x,
            UTM_Y = UTM_Y.x) %>%
+    #gets rid of all duplicate rows but keeps all info
+    distinct(Datetime,TAG, Event,  .keep_all = TRUE) %>%
     replace_na(list(Species = "No Info", ReleaseSite = "No Info"))
   
   
@@ -226,7 +228,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     select(TAG, RB1_n,RB2_n,HP3_n, HP4_n, CF5_n, CF6_n, M1_n, M2_n, B3_n, B4_n, Recap_n)
   
   
-  #### Merge Release data ###
+  #### Combine Release data ###
   Release1 <- Release %>%
     rename(TAG = TagID) %>%
     mutate(TAG = str_trim(TAG)) %>%

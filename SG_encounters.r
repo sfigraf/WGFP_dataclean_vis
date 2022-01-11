@@ -1654,7 +1654,8 @@ x <- all_events %>%
   ggplot(aes(x = Date, y = Time, color = Event)) +
   geom_point() +
   theme_classic() +
-  theme(axis.text.y = element_blank(),
+  theme(
+    #axis.text.y = element_blank(),
         axis.ticks = element_blank())
 
 
@@ -1706,6 +1707,66 @@ write_csv(New_Stationary, "New_Stationary.csv")
   
   
   
-  filter(ARR3 <= "01:00:00"  )
+ 
   # select(-ARR) %>%
   # rename(ARR = ARR3)
+
+#### Joining all_events with stations
+All_events <- df_list$All_Events
+EncounterHistory_AllData_wStations_20220107 <- read_csv("EncounterHistory_AllData_wStations_20220107.csv", 
+                                                        col_types = cols(OBJECTID = col_skip(), 
+                                                                         Join_Count = col_skip(), TARGET_FID = col_skip(), 
+                                                                         TAG = col_character(), Release_Length = col_number(), 
+                                                                         UTM_X = col_character(), UTM_Y = col_character(),
+                                                                         Date_ = col_date(format = "%m/%d/%Y"),
+                                                                         Release_Weight = col_number()))
+
+
+
+stations <- EncounterHistory_AllData_wStations_20220107 %>%
+  #select(Event, UTM_X, UTM_Y) %>%
+  #mutate(Release_Date = mdy(str_sub(Release_Date, start = 1, end = -5))) %>% #
+  rename(
+    Date = Date_,
+         Time = Time_) %>%
+  distinct(Event, UTM_X, UTM_Y, TAG, .keep_all = TRUE)
+
+#massive datafrmae occurs when there are multiple rows in B for which the key columns (same-name columns by default) match the same, single row in A
+#usually this means you have to make sure you join by the fields which will not have any differenitation: iun this case, "TAG", UTM_X", "UTM_Y", and "Event". The other fields are just to help keep the dataframe more concise
+
+all_events_stations_2 <- left_join(All_events, stations, by = c("TAG", "UTM_X", "UTM_Y")) # "Species", "Release_Length", "Release_Weight", "Event", "Date", "Time", "ReleaseSite", "Release_Date", "RecaptureSite", "Recap_Length", "Recap_Weight"
+y <- all_events_stations_2 %>%
+  filter(TAG %in% c("230000224079"),
+         Event.x %in% c("M1", "M2"))
+
+x <- all_events_stations_2 %>%
+  mutate(ET_STATION = case_when(is.na(ET_STATION) & (Event %in% c("RB1", "RB2")) ~ 4300,
+                                is.na(ET_STATION) & (Event %in% c("HP3", "HP4")) ~ 6340,
+                                is.na(ET_STATION) & (Event %in% c("CF5", "CF6")) ~ 9550,
+                                is.na(ET_STATION) & (Event %in% c("B3")) ~ 8290,
+                                !is.na(ET_STATION) ~ ET_STATION)) %>%
+  
+  distinct(Datetime, Event, TAG, .keep_all =TRUE) %>%
+  filter(is.na(ET_STATION))
+#all_events_stations <- left_join(All_events, EncounterHistory_AllData_wStations_20220107, by = c("UTM_X", "UTM_Y", "Species", "Release_Length", "Release_Weight", "Event"))
+
+
+
+x <- EncounterHistory_AllData_wStations_20220107 %>%
+  filter(Event %in% c("RB1","RB2", "HP3", "HP4", "CF5", "CF6", "B3", "B4")) %>%
+  distinct(Event, UTM_X, UTM_Y, .keep_all = TRUE) %>%
+  select(Event, UTM_X, UTM_Y)
+  
+x <- split(All_events, f=All_events$UTM_X)  
+
+unique_utmx_allevents = data.frame(UTM_X = unique(All_events$UTM_X)  )
+  
+unique_utmy_allevents = data.frame(UTM_Y = unique(All_events$UTM_Y)  )
+
+stations_x <- data.frame(UTM_X = unique(EncounterHistory_AllData_wStations_20220107$UTM_X))
+stations_y <- data.frame(UTM_Y = unique(EncounterHistory_AllData_wStations_20220107$UTM_Y))
+
+difs_x <- anti_join(stations_x, unique_utmx_allevents, by = "UTM_X")   
+
+test <- left_join(stations_x, unique_utmx_allevents)
+  

@@ -9,13 +9,54 @@
 # hitching post release site is below the antennas and if a fish released at hithcing post hits the hithcin post antennas, it's an upstream movement
 
 # no mobile detections incorporated for now
-All_events <- df_list$All_Events
+#All_events <- df_list$All_Events
 
-get_states_function <- function(All_events) {
+Get_states_function <- function(All_events, station_data) {
   library(tidyverse) 
   library(lubridate)
   
   start_time <- Sys.time()
+  
+
+# Combining stations into all_events dataset ------------------------------
+  stations <- station_data %>%
+    rename(
+      Date = Date_,
+      Time = Time_) %>%
+    distinct(Event, UTM_X, UTM_Y, TAG, .keep_all = TRUE)
+  
+  #massive datafrmae occurs when there are multiple rows in B for which the key columns (same-name columns by default) match the same, single row in A
+  #usually this means you have to make sure you join by the fields which will not have any differenitation: iun this case, "TAG", UTM_X", "UTM_Y", and "Event". The other fields are just to help keep the dataframe more concise
+  
+  all_events_stations_2 <- left_join(All_events, stations, by = c("TAG", "UTM_X", "UTM_Y", "Event")) # "Species", "Release_Length", "Release_Weight", "Event", "Date", "Time", "ReleaseSite", "Release_Date", "RecaptureSite", "Recap_Length", "Recap_Weight"
+  
+  
+
+  All_events_stations_3 <- all_events_stations_2 %>%
+    mutate(ET_STATION = case_when(is.na(ET_STATION) & (Event %in% c("RB1", "RB2")) ~ 4300,
+                                  is.na(ET_STATION) & (Event %in% c("HP3", "HP4")) ~ 6340,
+                                  is.na(ET_STATION) & (Event %in% c("CF5", "CF6")) ~ 9550,
+                                  is.na(ET_STATION) & (Event %in% c("B3")) ~ 8290,
+                                  !is.na(ET_STATION) ~ ET_STATION)) %>%
+    
+    distinct(Datetime, Event, TAG, .keep_all =TRUE) %>%
+    rename(
+      
+      Date = Date.x,
+      Time = Time.x,
+      
+      Species = Species.x,
+      Release_Length = Release_Length.x,
+      Release_Weight = Release_Weight.x, 
+      ReleaseSite = ReleaseSite.x,
+      Release_Date = Release_Date.x,
+      RecaptureSite = RecaptureSite.x,
+      Recap_Length = Recap_Length.x,
+      Recap_Weight = Recap_Weight.x
+      
+    ) %>%
+    select(Date, Time, Datetime, TAG, Event, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, Recap_Length, Recap_Weight, UTM_X, UTM_Y, ET_STATION)
+  
   
   All_events_days <- All_events %>%
     mutate(days_since = as.numeric(ceiling(difftime(Date, min(Date), units = "days")))
@@ -23,7 +64,7 @@ get_states_function <- function(All_events) {
   
   
   All_events_days1 <- All_events_days %>%
-    filter(!Event %in% c("M1", "M2")) %>% #filtering out mobile detections for now
+    #filter(!Event %in% c("M1", "M2")) %>% #filtering out mobile detections for now
     
     group_by(Date, TAG) %>%
     mutate(first_last = case_when(Datetime == min(Datetime) & Event != "Release" ~ "First_of_day",
@@ -35,7 +76,7 @@ get_states_function <- function(All_events) {
            daily_unique_events = length(unique(Event))
     ) %>%
     ungroup() %>%
-    distinct(TAG, Event, Date, first_last, .keep_all = TRUE) %>%
+    distinct(TAG, Event, Date, first_last, UTM_X, UTM_Y, .keep_all = TRUE) %>%
     
     group_by(TAG) %>%
     mutate(
@@ -197,6 +238,7 @@ get_states_function <- function(All_events) {
         
         
         #if the values are more or less than previous values, it's moved upstream or downstream
+        #if the station numbers are the same though, it's a transition, not a movement
         (current_event_vals > previous_event_vals) ~ "Downstream Movement",
         (current_event_vals < previous_event_vals) ~ "Upstream Movement",
         

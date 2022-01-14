@@ -1713,6 +1713,7 @@ write_csv(New_Stationary, "New_Stationary.csv")
 
 #### Joining all_events with stations
 All_events <- df_list$All_Events
+
 EncounterHistory_AllData_wStations_20220107 <- read_csv("EncounterHistory_AllData_wStations_20220107.csv", 
                                                         col_types = cols(OBJECTID = col_skip(), 
                                                                          Join_Count = col_skip(), TARGET_FID = col_skip(), 
@@ -1734,10 +1735,8 @@ stations <- EncounterHistory_AllData_wStations_20220107 %>%
 #massive datafrmae occurs when there are multiple rows in B for which the key columns (same-name columns by default) match the same, single row in A
 #usually this means you have to make sure you join by the fields which will not have any differenitation: iun this case, "TAG", UTM_X", "UTM_Y", and "Event". The other fields are just to help keep the dataframe more concise
 
-all_events_stations_2 <- left_join(All_events, stations, by = c("TAG", "UTM_X", "UTM_Y")) # "Species", "Release_Length", "Release_Weight", "Event", "Date", "Time", "ReleaseSite", "Release_Date", "RecaptureSite", "Recap_Length", "Recap_Weight"
-y <- all_events_stations_2 %>%
-  filter(TAG %in% c("230000224079"),
-         Event.x %in% c("M1", "M2"))
+all_events_stations_2 <- left_join(All_events, stations, by = c("TAG", "UTM_X", "UTM_Y", "Event")) # "Species", "Release_Length", "Release_Weight", "Event", "Date", "Time", "ReleaseSite", "Release_Date", "RecaptureSite", "Recap_Length", "Recap_Weight"
+
 
 x <- all_events_stations_2 %>%
   mutate(ET_STATION = case_when(is.na(ET_STATION) & (Event %in% c("RB1", "RB2")) ~ 4300,
@@ -1747,7 +1746,23 @@ x <- all_events_stations_2 %>%
                                 !is.na(ET_STATION) ~ ET_STATION)) %>%
   
   distinct(Datetime, Event, TAG, .keep_all =TRUE) %>%
-  filter(is.na(ET_STATION))
+  rename(
+    
+    Date = Date.x,
+    Time = Time.x,
+    
+    Species = Species.x,
+    Release_Length = Release_Length.x,
+    Release_Weight = Release_Weight.x, 
+    ReleaseSite = ReleaseSite.x,
+    Release_Date = Release_Date.x,
+    RecaptureSite = RecaptureSite.x,
+    Recap_Length = Recap_Length.x,
+    Recap_Weight = Recap_Weight.x
+    
+  ) %>%
+  select(Date, Time, Datetime, TAG, Event, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, Recap_Length, Recap_Weight, UTM_X, UTM_Y, ET_STATION)
+  
 #all_events_stations <- left_join(All_events, EncounterHistory_AllData_wStations_20220107, by = c("UTM_X", "UTM_Y", "Species", "Release_Length", "Release_Weight", "Event"))
 
 
@@ -1757,6 +1772,9 @@ x <- EncounterHistory_AllData_wStations_20220107 %>%
   distinct(Event, UTM_X, UTM_Y, .keep_all = TRUE) %>%
   select(Event, UTM_X, UTM_Y)
   
+# y <- all_events_stations_2 %>%
+#   filter(TAG %in% c("230000224079"),
+#          Event.x %in% c("M1", "M2"))
 x <- split(All_events, f=All_events$UTM_X)  
 
 unique_utmx_allevents = data.frame(UTM_X = unique(All_events$UTM_X)  )
@@ -1769,4 +1787,12 @@ stations_y <- data.frame(UTM_Y = unique(EncounterHistory_AllData_wStations_20220
 difs_x <- anti_join(stations_x, unique_utmx_allevents, by = "UTM_X")   
 
 test <- left_join(stations_x, unique_utmx_allevents)
-  
+
+r11 <- r1 %>%
+  filter(sum_dist > 0) %>%
+  distinct(TAG, .keep_all = TRUE)
+
+r11 %>%
+  ggplot(aes(x = sum_dist)) +
+  geom_bar(stat = "count") +
+  theme_classic()

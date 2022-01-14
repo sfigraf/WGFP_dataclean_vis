@@ -282,8 +282,13 @@ Get_states_function <- function(All_events, station_data) {
 
 
 (current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & ET_STATION < lead(ET_STATION, order_by = Datetime) ~ "Downstream Transition then Upstream Transition", 
-(current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION > lead(ET_STATION, order_by = Datetime) ~ "Downstream Transition Before continuing Downstream", #230000228136
-(current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & ET_STATION == lead(ET_STATION, order_by = Datetime) ~ "Downstream Transition with next detection at same site", 
+(current_event_vals >= previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION > lead(ET_STATION, order_by = Datetime) ~ "Downstream Transition Before continuing Downstream", #230000228136 #may need to include that previous detection was on the same day in order to do transition? 
+(current_event_vals >= previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION >= lead(ET_STATION, order_by = Datetime) & (Date == lag(Date, order_by = Datetime)) & (Date != lead(Date, order_by = Datetime)) & current_event_vals <= lead(current_event_vals, order_by = Datetime) ~ "Downstream Transition (possibly inferred) with next detection possibly at same site", 
+(current_event_vals >= previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION >= lead(ET_STATION, order_by = Datetime) & (Date == lag(Date, order_by = Datetime)) & (Date != lead(Date, order_by = Datetime)) & current_event_vals > lead(current_event_vals, order_by = Datetime) ~ "Downstream Transition (possibly inferred)  and inferred upstream transition with next detection possibly at same site", 
+(current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION >= lead(ET_STATION, order_by = Datetime)  & (Date == lag(Date, order_by = Datetime)) & (Date == lead(Date, order_by = Datetime)) ~ "Downstream Transition (possibly inferred) with next detection possibly at same site1", # if this line were to leave and these would be coded as NA, it might be beneficial
+
+
+(current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION <= lead(ET_STATION, order_by = Datetime) & (Date != lag(Date, order_by = Datetime)) & (Date != lead(Date, order_by = Datetime)) ~ "Inferred Downstream Transition with next detection possibly at same site", 
 
 
 (Event %in% c("M1", "M2")) & (ET_STATION < lag(ET_STATION, order_by = Datetime))  ~ "Downstream Movement1",  #`movement = case_when(...)`. x object not interpretable as a factor# solved because I was typing uppercase C for a concatenation of strings, not c
@@ -292,7 +297,7 @@ Get_states_function <- function(All_events, station_data) {
 (is.na(current_event_vals) | is.na(previous_event_vals)) & ET_STATION < lag(ET_STATION, order_by = Datetime) & ET_STATION == lead(ET_STATION, order_by = Datetime) & current_event_vals < lead(current_event_vals, order_by = Datetime) & (str_detect(Event, "Release") == FALSE) ~ "Downstream Movement2 before potential Transition", #skipped an antenna #230000228623
 
 (current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION < lag(ET_STATION, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime)) ~ "Downstream Movement and last detection of history",
-(current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime)) ~ "Downstream Transition and last detection of history",
+(current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime)) & !Event %in% c("M1", "M2") ~ "Downstream Transition and last detection of history",
 
 #fish must have also transitioned if the next time it's seen it's seen on the next-most ds antenna
 #if a fish is headed downstream and only hits one antenna but then is detected downstream, it must have transitioned as well as moved
@@ -309,9 +314,16 @@ Get_states_function <- function(All_events, station_data) {
 (current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & ET_STATION > lag(ET_STATION, order_by = Datetime) & ET_STATION <= lead(ET_STATION, order_by = Datetime) & (as.numeric(str_extract(Event, "[:digit:]")) %% 2 == 0)  & !Event %in% c("B3", "B4", "M1", "M2") ~ "Upstream Movement without Transition", #& (current_event_vals == lead(current_event_vals, order_by = Datetime)) #before hitting same antenna
 (current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & ET_STATION > lag(ET_STATION, order_by = Datetime) & ET_STATION <= lead(ET_STATION, order_by = Datetime) & (as.numeric(str_extract(Event, "[:digit:]")) %% 2 == 1)  & !Event %in% c("B3", "B4", "M1", "M2") ~ "Upstream Movement and Upstream Transition", #& (current_event_vals == lead(current_event_vals, order_by = Datetime)) # before hitting same antenna
 
-(current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & ET_STATION > lead(ET_STATION, order_by = Datetime) ~ "Upstream Transition then Upstream Transition", 
-(current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION < lead(ET_STATION, order_by = Datetime) ~ "Upstream Transition Before continuing Upstream", #230000228136
-(current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & ET_STATION == lead(ET_STATION, order_by = Datetime) ~ "Upstream Transition with next detection at same site", 
+(current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & ET_STATION > lead(ET_STATION, order_by = Datetime) ~ "Upstream Transition then Downstream Transition", 
+(current_event_vals <= previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION < lead(ET_STATION, order_by = Datetime) ~ "Upstream Transition Before continuing Upstream", #230000228136
+(current_event_vals <= previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION <= lead(ET_STATION, order_by = Datetime) & (Date == lag(Date, order_by = Datetime)) & (Date != lead(Date, order_by = Datetime)) & current_event_vals >= lead(current_event_vals, order_by = Datetime)~ "Upstream Transition (possibly inferred) with next detection possibly at same site", 
+(current_event_vals < previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime))  & ET_STATION <= lead(ET_STATION, order_by = Datetime) & (Date == lag(Date, order_by = Datetime)) & (Date == lead(Date, order_by = Datetime)) ~ "Upstream Transition (possibly inferred) with next detection possibly at same site1", 
+(current_event_vals <= previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION <= lead(ET_STATION, order_by = Datetime) & (Date == lag(Date, order_by = Datetime)) & (Date != lead(Date, order_by = Datetime)) & current_event_vals < lead(current_event_vals, order_by = Datetime) ~ "Upstream Transition (possibly inferred)  and inferred downstream transition with next detection possibly at same site", 
+
+
+#upstream inferred transition for fish 
+(current_event_vals > previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & ET_STATION <= lead(ET_STATION, order_by = Datetime) & (Date != lag(Date, order_by = Datetime)) & (Date != lead(Date, order_by = Datetime)) ~ "Inferred Upstream Transition with next detection possibly at same site", #230000228862
+
 
 
 (Event %in% c("M1", "M2")) & (ET_STATION > lag(ET_STATION, order_by = Datetime))  ~ "Upstream Movement1",  #`movement = case_when(...)`. x object not interpretable as a factor# solved because I was typing uppercase C for a concatenation of strings, not c
@@ -322,7 +334,7 @@ Get_states_function <- function(All_events, station_data) {
 #(is.na(current_event_vals) | is.na(previous_event_vals)) & ET_STATION < lag(ET_STATION, order_by = Datetime) & ET_STATION == lead(ET_STATION, order_by = Datetime) & current_event_vals < lead(current_event_vals, order_by = Datetime) & (str_detect(Event, "Release") == FALSE) ~ "Upstream Movement2 before Transition", #skipped an antenna #230000228623
 
 (current_event_vals < previous_event_vals| (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION > lag(ET_STATION, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime)) ~ "Upstream Movement and last detection of history",
-(current_event_vals < previous_event_vals| (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime)) ~ "Upstream Transition and last detection of history",
+(current_event_vals < previous_event_vals| (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date == lag(Date, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime)) & !Event %in% c("M1", "M2") ~ "Upstream Transition and last detection of history",
 
 # (current_event_vals < previous_event_vals) & (ET_STATION != lag(ET_STATION, order_by = Datetime)) & (ET_STATION == lead(ET_STATION, order_by = Datetime)) & (Date == lead(Date, order_by = Datetime)) & (current_event_vals > lead(current_event_vals, order_by = Datetime)) ~ "Upstream Movement before continuing upstream", 
 # (current_event_vals < previous_event_vals) & (ET_STATION != lag(ET_STATION, order_by = Datetime)) & (ET_STATION == lead(ET_STATION, order_by = Datetime)) & (Date == lead(Date, order_by = Datetime)) & (current_event_vals < lead(current_event_vals, order_by = Datetime)) ~ "Upstream Movement and Transition before a Downstream Transition", #means fish missed a antenna 
@@ -359,13 +371,18 @@ Get_states_function <- function(All_events, station_data) {
 (current_event_vals != previous_event_vals) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date != lag(Date, order_by = Datetime)) & (ET_STATION == lead(ET_STATION, order_by = Datetime))  ~ "Not Enough Info to infer Movement", #might have to include that next station is the same as previous? 
 (current_event_vals != previous_event_vals) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & (Date != lag(Date, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime))  ~ "Not Enough Info to infer Movement and last detection of history", #might have to include that next station is the same as previous? 
 
+(current_event_vals == previous_event_vals | (is.na(current_event_vals) | is.na(previous_event_vals))) & (ET_STATION == lag(ET_STATION, order_by = Datetime)) & is.na(lead(Event, order_by = Datetime)) ~ "No Movement and last detection of history",
+
 #if a event is mobile , decide whether it's a upstream or downstream movement based on ET station
 
 Event %in% c("M1", "M2") & (ET_STATION == lag(ET_STATION, order_by = Datetime)) ~ "No Movement",
 #if current event vals is na or previous event vals are NA
 (is.na(current_event_vals) | is.na(previous_event_vals)) & is.na(ET_STATION) ~ "Not Enough Info to infer movement1",
 # #if the values are the same and the day is the same, it means there was multiple consecutive detections at the same antenna and same day 
-current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) ~ "No Movement; Same Day", 
+#current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) & ET_STATION == lead(ET_STATION, order_by = Datetime) ~ "No Movement; Same Day", #current_event_vals == lead(current_event_vals, order_by = Datetime)
+current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) & (Date == lead(Date, order_by = Datetime)) & ET_STATION == lead(ET_STATION, order_by = Datetime) & abs(current_event_vals - lead(current_event_vals)) < 1 & Event %in% c("RB1", "RB2", "HP3", "HP4", "CF5", "CF6")  ~ "No Movement; Same Day for stationary antennas", #current_event_vals == lead(current_event_vals, order_by = Datetime)
+current_event_vals == previous_event_vals & (Date == lag(Date, order_by = Datetime)) & !Event %in% c("RB1", "RB2", "HP3", "HP4", "CF5", "CF6")  ~ "No Movement; Same Day for non-stationary antennas", #current_event_vals == lead(current_event_vals, order_by = Datetime)
+
 current_event_vals == previous_event_vals & (Date != lag(Date, order_by = Datetime)) ~ "No Movement1",         
 #(current_event_vals > previous_event_vals) & (ET_STATION != lag(ET_STATION, order_by = Datetime)) & (ET_STATION == lead(ET_STATION, order_by = Datetime)) & current_event_vals lead(current_event_vals, order_by = Datetime) ~ "Downstream Movement and Downstream Transition ",
 
@@ -484,6 +501,7 @@ current_event_vals == previous_event_vals & (Date != lag(Date, order_by = Dateti
   #   filter(!is.na(previous_event) & !Event %in% c("Release", "Recapture and Release" ))
   r15 <- r1 %>%
     filter(
+      !ReleaseSite %in% c("Pool Above Red Barn Antenna"),
       str_detect(TAG, c("^230")),
            !is.na(previous_event), #don't want entries 
       is.na(movement)
@@ -540,7 +558,7 @@ current_event_vals == previous_event_vals & (Date != lag(Date, order_by = Dateti
   states_df_list <- list("All_States" = r2, "Days_and_states_wide" = days_and_states_wide)
   #this just tells how long the fucntion takes
   end_time <- Sys.time()
-  print(paste("States Function took", round(end_time-start_time,2), "Seconds"))
+  print(paste("States Function took", round(end_time-start_time,2)))
   
   return(states_df_list)
 }

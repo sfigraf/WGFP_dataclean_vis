@@ -1796,3 +1796,5 @@ r11 %>%
   ggplot(aes(x = sum_dist)) +
   geom_bar(stat = "count") +
   theme_classic()
+
+write_csv(r14, "older_movement NA values to look at.csv")

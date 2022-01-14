@@ -26,10 +26,11 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     
     # mutate(TAG = case_when(str_detect(TAG, "^900") ~ str_sub(TAG, 4,-1),
     #                        str_detect(TAG, "!^900") ~ TAG)) %>%
-    mutate(UTM_X =case_when(SCD == "RB1" | SCD == "RB2" ~ "412608",
+    
+    mutate(UTM_X =case_when(SCD == "RB1" | SCD == "RB2" ~ "412489",
                             SCD == "HP3" | SCD == "HP4" ~ "414375",
                             SCD == "CF5" | SCD == "CF6" ~ "416965"),
-           UTM_Y = case_when(SCD == "RB1" | SCD == "RB2" ~ "4439503",
+           UTM_Y = case_when(SCD == "RB1" | SCD == "RB2" ~ "4439413",
                              SCD == "HP3" | SCD == "HP4" ~ "4440241",
                              SCD == "CF5" | SCD == "CF6" ~ "4439369")) %>%
     distinct()

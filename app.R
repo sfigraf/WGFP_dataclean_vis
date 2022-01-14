@@ -22,7 +22,13 @@ Mobile <- read.csv("WGFP_Mobile_Detect_AllData.csv" , colClasses= c(rep("charact
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv", na.strings = c(""," ","NA"), colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
 Recaptures <- read.csv("WGFP_RecaptureData_Master.csv", na.strings = c(""," ","NA"), colClasses = c(rep("character", 9), rep("numeric", 2), rep("character", 8)))
-
+Stationdata1 <- read_csv("EncounterHistory_AllData_wStations_20220114.csv", 
+                         col_types = cols(
+                           #OBJECTID = col_skip(), Join_Count = col_skip(), TARGET_FID = col_skip(), 
+                           TAG = col_character(), Release_Length = col_number(), 
+                           UTM_X = col_character(), UTM_Y = col_character(),
+                           #Date_ = col_date(format = "%m/%d/%Y"),
+                           Release_Weight = col_number()))
 
 #  
 Mobile <- Mobile %>%
@@ -166,7 +172,7 @@ ui <- fluidPage(
                                       
                           ), #end of picker 3 input
                           
-                          checkboxInput("checkbox1", "Remove Duplicate Days, TAGs and Events"),
+                          checkboxInput("checkbox1", "Remove Duplicate Days, TAGs Events and UTMs"),
                           checkboxInput("checkbox2", "Remove Duplicate TAGs: doesn't work with TAG filter"), #deliberate decision not to add another if statement to have it actually work because it doesn't make sense you would use both at the same time
                           actionButton("button2", "Reset Filters"),
                           tags$hr(),
@@ -468,7 +474,7 @@ server <- function(input, output, session) {
     #want it so that when the first button4 is pressed, the whole dataset is made
     #then after that i want to render the table with button5 along with filters
     initial_states_data_list <- eventReactive(input$button4,{
-      states_data1_list <- get_states_function(df_list$All_Events)
+      states_data1_list <- Get_states_function(df_list$All_Events, Stationdata1)
       return(states_data1_list)
         
     })

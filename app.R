@@ -15,9 +15,10 @@ library(bslib)
 
 # Data Read Ins -----------------------------------------------------------
 
+#stationary1 <- read.csv(paste0("WGFP_Raw_20211130.csv"))
 
 # if column names change in any of these read-ins, might require some modification to code to get them to combine
-Stationary <- read.csv(paste0("WGFP_Raw_20211130.csv")) #WGFP_Raw_20211130.csv
+Stationary <- read.csv(paste0("WGFP_Raw_20220110_cf6.csv")) #WGFP_Raw_20211130.csv WGFP_Raw_20220110_cf6.csv
 Mobile <- read.csv("WGFP_Mobile_Detect_AllData.csv" , colClasses= c(rep("character",14), rep("numeric", 4), rep("character", 3)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv", na.strings = c(""," ","NA"), colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
@@ -44,10 +45,11 @@ source("WGFP_EncounterHistoriesFunction.R")
 source("Get_states_function.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
+#statesdf_list <- Get_states_function(All_events, Stationdata1)
 
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
-all_events <- df_list$All_Events
+All_events <- df_list$All_Events
 
 Enc_release_data <- df_list$ENC_Release2 %>%
     mutate(Date = ifelse(str_detect(Date, "/"),

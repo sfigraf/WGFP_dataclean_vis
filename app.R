@@ -18,7 +18,7 @@ library(bslib)
 #stationary1 <- read.csv(paste0("WGFP_Raw_20211130.csv"))
 
 # if column names change in any of these read-ins, might require some modification to code to get them to combine
-Stationary <- read.csv(paste0("WGFP_Raw_20220110_cf6.csv")) #WGFP_Raw_20211130.csv WGFP_Raw_20220110_cf6.csv
+Stationary <- read.csv(paste0("WGFP_Raw_20220110.csv")) #WGFP_Raw_20211130.csv WGFP_Raw_20220110_cf6.csv
 Mobile <- read.csv("WGFP_Mobile_Detect_AllData.csv" , colClasses= c(rep("character",14), rep("numeric", 4), rep("character", 3)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv", na.strings = c(""," ","NA"), colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
@@ -45,11 +45,12 @@ source("WGFP_EncounterHistoriesFunction.R")
 source("Get_states_function.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
+All_events <- df_list$All_Events
+
 #statesdf_list <- Get_states_function(All_events, Stationdata1)
 
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
-All_events <- df_list$All_Events
 
 Enc_release_data <- df_list$ENC_Release2 %>%
     mutate(Date = ifelse(str_detect(Date, "/"),
@@ -212,7 +213,7 @@ ui <- fluidPage(
             tabPanel("Daily States and Movements",
                      sidebarLayout(
                        sidebarPanel(
-                         actionButton("button4", label = "Get States: Takes ~ 45 seconds", width = "100%",
+                         actionButton("button4", label = "Get States: Takes ~ 2 min", width = "100%",
                                       onclick = "var $btn=$(this); setTimeout(function(){$btn.remove();},0);"),
                          hr(),
                          conditionalPanel(condition = "input.button4 == true",
@@ -248,7 +249,9 @@ ui <- fluidPage(
                          tabPanel("States Dataframe",
                                   withSpinner(DT::dataTableOutput("states1"))),
                          tabPanel("States and Days Wide",
-                                  withSpinner(DT::dataTableOutput("states2")))
+                                  withSpinner(DT::dataTableOutput("states2"))),
+                         tabPanel("Movements",
+                                  withSpinner(DT::dataTableOutput("movements1")))
                          
                         )#end of tabsetPanel
                       )#end of mainPanel
@@ -634,7 +637,7 @@ server <- function(input, output, session) {
     output$states1 <- renderDT({
       
       input$button5
-      isolate({
+      
         datatable(
           filtered_states_data(), #initial_states_data_list()$All_States
                   rownames = FALSE,
@@ -653,21 +656,9 @@ server <- function(input, output, session) {
             columns = c(1:ncol(initial_states_data_list()$All_States))
             
           )
-      })
       
       
-      # initial_states_data(),
-      # rownames = FALSE,
-      # #extensions = c('Buttons'),
-      # #for slider filter instead of text input
-      # filter = 'top',
-      # options = list(
-      #   pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
-      #   dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
-      #   language = list(emptyTable = "Enter inputs and press Render Table")
-      #   
-      #   #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
-      # )
+      
     })
     
     output$states2 <- renderDT({
@@ -686,6 +677,25 @@ server <- function(input, output, session) {
                 )
       ) 
         
+      
+    })
+    
+    output$movements1 <- renderDT({
+      
+      
+      datatable(initial_states_data_list()$Movements,
+                rownames = FALSE,
+                
+                filter = 'top',
+                options = list(
+                  pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+                  dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+                  language = list(emptyTable = "Enter inputs and press Render Table")
+                  
+                  #buttons = list(list(extend = 'colvis', columns = c(2, 3, 4)))
+                )
+      ) 
+      
       
     })
     

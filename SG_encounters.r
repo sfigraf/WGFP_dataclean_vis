@@ -1643,24 +1643,127 @@ a2 <- a1 %>%
 
 x <- data.frame("Date" = c("2020-12-31", "2020-12-31", "2021-01-01", "2021-01-02", "2021-01-03", "2021-01-04"), "Event" = c("HP4", "HP3", "HP3", "RB2", "HP3", "HP3"))
 
-# Bad Timestamps between 12:00 and 1:00 -----------------------------------
+# Timestamp QAQC ----------------------------------------------------------
 
 
-### fixing bad timestamps between 12/10 and 1/30
+
 library(plotly)
-x <- all_events %>%
+
+Markers_only <- Stationary %>%
+  mutate(TAG = str_replace(str_trim(TAG), "\\_", "")) %>%
+  filter(
+        str_detect(TAG, "^0000000"), 
+    #TTY %in% c("W"),
+         #!TAG %in% c("900230000102751","900226001581072","900230000004000")
+    )
+
+### Subset Detection Type "Codes" to only include Summary (S) and Individual (I) ###
+#WGFP_Clean= data.frame(WGFP_NoMarkers[which(WGFP_NoMarkers$Code == "I" | WGFP_NoMarkers$Code == "S"),])
+
+#### Add Lat Longs to detections ###
+
+# takes out 900 from TAG in WGFP Clean
+# also takes out duplicate rows
+Markers_only1 <- Markers_only %>%
+  mutate(
+    #TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG),
+         DTY = ifelse(str_detect(DTY, "/"), 
+                      as.character(mdy(DTY)), 
+                      DTY))
+
+Markers_only_test <- Markers_only1 %>%
+  # filter(ARR <= hms::as_hms('12:00:00'),
+  #        #ARR <= hms::as_hms('13:00:00'),
+  #        #str_detect(ARR, c("AM|PM"))
+  #        ) %>%
+  mutate(betterARR = case_when(str_detect(ARR, "AM") & str_detect(ARR, "^12:") ~ hms(ARR) - hours(12),
+                               str_detect(ARR, "AM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR),
+                               str_detect(ARR, "PM") ~ hms(ARR) + hours(12),
+                               #if it doesn't detect PM or AM just do hms(Scan_Time)
+                               str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR)),
+         Scan_Time2 = as.character(as_datetime(betterARR)), 
+         Scan_Time3 = str_sub(Scan_Time2, start = 11, end = -1)
+         )
+
+
+y <- Markers_only_test %>%
+  filter(TAG == "00000000000000004948") %>% #00000000000000004948 shows that it might have fallen off a bit
+  #distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
+  #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
+  ggplot(aes(x = DTY, y = Scan_Time3, color = SCD)) +
+  geom_point() +
+  theme_classic() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())
+
+y
+
+ggplotly(y)
+
+    # ARR2 = case_when(str_detect(ARR, "AM") ~ hms(ARR)))
+
+# if (    length(unique( str_detect(Markers_only1$ARR, "PM|AM"))) > 1) {
+#   Markers_only2 <- Markers_only1 %>%
+#     mutate(Scan_Time1 = case_when(str_detect(ARR, "AM") ~ hms(ARR) ,
+#                                   str_detect(ARR, "PM") ~ hms(ARR) + hours(12),
+#                                   #if it doesn't detect PM or AM just do hms(Scan_Time)
+#                                   str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR))
+#     ) %>%
+#     mutate(Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
+#            Scan_Time3 = str_sub(Scan_Time2, start = 11, end = -1)) %>%
+#     #select(Scan_Date, Scan_Time3, TAG, Site_Code, UTM_X, UTM_Y ) %>%
+#     rename(Scan_Time = (Scan_Time3))
+# }
+
+
+s <- read.csv("WGFP_Raw_20211130 - Copy (2).csv")
+s1 <- read.csv("WGFP_Raw_20210603.csv")
+x <- All_events %>%
   distinct(Date, Event, TAG, .keep_all = TRUE) %>%
   #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
   ggplot(aes(x = Date, y = Time, color = Event)) +
   geom_point() +
   theme_classic() +
   theme(
-    #axis.text.y = element_blank(),
+    axis.text.y = element_blank(),
         axis.ticks = element_blank())
 
+y <- s %>%
+  distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
+  #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
+  ggplot(aes(x = DTY, y = ARR, color = SCD)) +
+  geom_point() +
+  theme_classic() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())
 
-ggplotly(x) 
+y <- s %>%
+  filter(TAG == "0000_0000000000005394") %>%
+  #distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
+  #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
+  ggplot(aes(x = DTY, y = ARR, color = SCD)) +
+  geom_point() +
+  theme_classic() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())
 
+y
+
+
+
+ggplotly(y) 
+
+mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG),
+       DTY = ifelse(str_detect(DTY, "/"), 
+                    as.character(mdy(DTY)), 
+                    DTY))
+# Bad Timestamps between 12:00 and 1:00 -----------------------------------
+
+
+### fixing bad timestamps between 12/10 and 1/30
 #this is 
 timestamp_problems <- Stationary %>%
   filter(DTY >= "2020-12-10" & DTY <= "2021-02-02", 
@@ -1798,3 +1901,45 @@ r11 %>%
   theme_classic()
 
 write_csv(r14, "older_movement NA values to look at.csv")
+
+#####
+
+r1 <- statesdf_list$Movements
+
+cf5 <- read.csv("WGFP_Raw_20220110_cf5.csv")
+cf6 <- read.csv("WGFP_Raw_20220110_cf6.csv")
+x <- anti_join(cf5, cf6)
+
+x1 <- cf6 %>%
+  filter(is.na(DTY))
+
+plot <- movement_table %>%
+  filter(!move2 %in% c("No Movement", "Initial Release")) %>%
+  mutate(weeks_since = as.numeric(ceiling(difftime(Date, min(Date), units = "weeks")))
+  ) %>%
+  ggplot(aes(x = Date, fill = move2)) +
+  geom_bar(stat = "count", position = "dodge") +
+  theme_classic()
+plotly1
+plotly1 <- ggplotly(plot)
+plotly2 <- plotly1 %>%
+  #hover
+  layout(
+    hoverinfo = 'text',
+    #hovertext = paste("Date"),
+  # xaxis = list(
+  #   type = "date"
+  #   #tickformat = "%Y %m %d"
+  # )
+  )
+
+plotly2
+#library(plotly)
+
+
+oregon_rfid <- new_pit(data = "oregon_rfid", test_tags = NULL, print_to_file = FALSE, time_zone = "America/Vancouver")
+
+
+x <- r2 %>%
+  group_by(State) %>%
+  tally()

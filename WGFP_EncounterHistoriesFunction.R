@@ -22,7 +22,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   # takes out 900 from TAG in WGFP Clean
   # also takes out duplicate rows
   WGFP_Clean <- WGFP_Clean %>%
-    mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG)) %>%
+    mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG),
+           DTY = ifelse(str_detect(DTY, "/"), 
+                         as.character(mdy(DTY)), 
+                         DTY)) %>%
     
     # mutate(TAG = case_when(str_detect(TAG, "^900") ~ str_sub(TAG, 4,-1),
     #                        str_detect(TAG, "!^900") ~ TAG)) %>%
@@ -83,24 +86,27 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
   
   #cleaning timestamps for mobile and old stationary detections mainly
   if (    length(unique( str_detect(All_detections$Scan_Time, "PM|AM"))) > 1) {
-    All_detections <- All_detections %>%
-      mutate(Scan_Time1 = case_when(str_detect(Scan_Time, "AM") ~ hms(Scan_Time) ,
-                              str_detect(Scan_Time, "PM") ~ hms(Scan_Time) + hours(12),
-                              #if it doesn't detect PM or AM just do hms(Scan_Time)
-                              str_detect(Scan_Time, "PM|AM") == FALSE ~ hms(Scan_Time))
+    All_detections1 <- All_detections %>%
+      mutate(Scan_Time1 = case_when(str_detect(Scan_Time, "AM") & str_detect(Scan_Time, "^12:") ~ hms(Scan_Time) - hours(12),
+                                    str_detect(Scan_Time, "PM") & str_detect(Scan_Time, "^12:") ~ hms(Scan_Time),
+                                    
+                                    str_detect(Scan_Time, "AM") & str_detect(Scan_Time, "^12:", negate = TRUE) ~ hms(Scan_Time),
+                                    str_detect(Scan_Time, "PM") & str_detect(Scan_Time, "^12:", negate = TRUE) ~ hms(Scan_Time) + hours(12),
+                                    #if it doesn't detect PM or AM just do hms(Scan_Time)
+                                    str_detect(Scan_Time, "PM|AM") == FALSE ~ hms(Scan_Time)),
       ) %>%
       mutate(Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
              Scan_Time3 = str_sub(Scan_Time2, start = 11, end = -1)) %>%
-      select(Scan_Date, Scan_Time3, TAG, Site_Code, UTM_X, UTM_Y ) %>%
-      rename(Scan_Time = Scan_Time3)
+      select(Scan_Date, Scan_Time, Scan_Time3, TAG, Site_Code, UTM_X, UTM_Y ) #%>%
+      #rename(Scan_Time = (Scan_Time3))
   }
   
   All_detections <- All_detections %>%
     filter(Scan_Date >= as.Date("2020-08-06")) %>% #right before the first date of marker tag detections on stationary antennas
     mutate(
       #datetime1 = as.POSIXct(paste(Scan_Date, Scan_Time),format="%Y-%m-%d %H:%M:%S"), #this line works too
-           datetime2 = ymd_hms(paste(Scan_Date, Scan_Time))) %>%
-    rename(Scan_DateTime = datetime2) %>%
+      Scan_DateTime = ymd_hms(paste(Scan_Date, Scan_Time))) %>%
+    #rename(Scan_DateTime = datetime2) %>%
     select(Scan_Date, Scan_Time, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
   
 ### all detections and recaps and release "EVENTS" DF

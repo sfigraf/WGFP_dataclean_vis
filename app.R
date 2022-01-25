@@ -2,6 +2,8 @@ library(shiny)
 library(shinycssloaders)
 library(tidyverse) #error has occ
 library(lubridate)
+library(leaflet)
+library(PBSmapping)
 library(DT)
 library(shinyWidgets) # for pickerinput
 library(shinythemes)
@@ -92,7 +94,7 @@ ui <- fluidPage(
                       ), #end fo how to use TabPanel
              
 
-# Individual Datsets UI ---------------------------------------------------
+# Individual Datasets UI ---------------------------------------------------
 
              
              tabPanel("Individual Datasets",
@@ -240,8 +242,20 @@ ui <- fluidPage(
                                                       )
                                                       
                                                       
-                                          ), #end of picker 4 input 
-                                          actionButton("button5", label = "Render Table", width = "100%")
+                                          ), #end of picker 5 input 
+                                          pickerInput(inputId = "picker6",
+                                                      label = "Select Movement Type: Movements DF and map",
+                                                      choices = c("No Movement", "Upstream Movement", "Downstream Movement", "Initial Release"), #will need to be updated later on for uniqueness
+                                                      selected = c("No Movement", "Upstream Movement", "Downstream Movement", "Initial Release"),
+                                                      multiple = TRUE,
+                                                      options = list(
+                                                        `actions-box` = TRUE #this makes the "select/deselect all" option
+                                                      )
+                                                      
+                                                      
+                                          ), #end of picker 6 input
+                                          
+                                          actionButton("button5", label = "Render Table/Data", width = "100%")
                                           ) #end of conditional panel
                          
                        ),#end of sidebar panel
@@ -251,13 +265,64 @@ ui <- fluidPage(
                          tabPanel("States and Days Wide",
                                   withSpinner(DT::dataTableOutput("states2"))),
                          tabPanel("Movements",
-                                  withSpinner(DT::dataTableOutput("movements1")))
+                                  withSpinner(DT::dataTableOutput("movements1"))),
+                         tabPanel("Movements Map",
+                                  withSpinner(leafletOutput("map1"))) #forgot to do LeafletOutput so the map wasn't showing up
                          
                         )#end of tabsetPanel
                       )#end of mainPanel
                      )#end of sidebarLayout including sidebarPanel and Mainpanel
                      
-                     )#end of States and movements Tab
+                     ),#end of States and movements ui Tab
+
+# Map UI Tab --------------------------------------------------------------
+# tabPanel("Daily States and Movements Map",
+#          sidebarLayout(
+#            sidebarPanel(
+#              actionButton("button6", label = "Get States: Takes ~ 2 min", width = "100%",
+#                           onclick = "var $btn=$(this); setTimeout(function(){$btn.remove();},0);"),
+#              hr(),
+#              conditionalPanel(condition = "input.button6 == true",
+#                               textInput("textinput3", label = "Filter by TAG"),
+#                               pickerInput(inputId = "picker6",
+#                                           label = "Select Movement Type:",
+#                                           choices = c("No Movement", "Upstream Movement", "Downstream Movement"), #will need to be updated later on for uniqueness
+#                                           selected = c("No Movement", "Upstream Movement", "Downstream Movement"),
+#                                           multiple = TRUE,
+#                                           options = list(
+#                                             `actions-box` = TRUE #this makes the "select/deselect all" option
+#                                           )
+#                               
+#                               
+#                               ), #end of picker 6 input
+# 
+#                               # pickerInput(inputId = "picker7",
+#                               #             label = "States:",
+#                               #             choices = c(LETTERS[1:12]), #will need to be updated later on for uniqueness
+#                               #             selected = c(LETTERS[1:12]),
+#                               #             multiple = TRUE,
+#                               #             options = list(
+#                               #               `actions-box` = TRUE #this makes the "select/deselect all" option
+#                               #             )
+#                               #
+#                               #
+#                               # ), #end of picker 4 input
+#                               actionButton("button7", label = "Render Map", width = "100%")
+#              ) #end of conditional panel
+# 
+#            ),#end of sidebar panel
+#            mainPanel(tabsetPanel(
+#              tabPanel("Movements Map",
+#                       withSpinner(DT::dataTableOutput("map1")))
+# 
+# 
+#            )#end of tabsetPanel
+#            )#end of mainPanel
+#          )#end of sidebarLayout including sidebarPanel and Mainpanel
+# 
+# ),#end of Map ui Tab
+
+
          
 
     ) #end of navbar page
@@ -312,7 +377,21 @@ server <- function(input, output, session) {
                       choices = sort(unique(initial_states_data_list()$All_States$State)),
                       selected = unique(initial_states_data_list()$All_States$State)
     )
+    
+    updatePickerInput(session, "picker6",
+                    choices = sort(unique(initial_states_data_list()$Movements$movement_only)),
+                    selected = unique(initial_states_data_list()$Movements$movement_only)
+    )
   })
+  
+  # #when make states button is pressed for the map UI, update picker
+  # observeEvent(input$button6,{
+  #   updatePickerInput(session, "picker6",
+  #                     choices = sort(unique(initial_states_data_list()$All_States$State)),
+  #                     selected = unique(initial_states_data_list()$All_States$State)
+  #     ) 
+  #   
+  # })
     
 
 # Ind D Reactives ---------------------------------------------------------
@@ -480,6 +559,8 @@ server <- function(input, output, session) {
     #then after that i want to render the table with button5 along with filters
     initial_states_data_list <- eventReactive(input$button4,{
       states_data1_list <- Get_states_function(df_list$All_Events, Stationdata1)
+      
+      
       return(states_data1_list)
         
     })
@@ -501,8 +582,32 @@ server <- function(input, output, session) {
         }
 
       
-      
       return(states_data1)
+    }) 
+
+# Movement Data Reactives -------------------------------------------------
+
+    
+    filtered_movements_data <- eventReactive(input$button5,{
+      
+      if(input$textinput2 != ''){ 
+        movements_data1 <- initial_states_data_list()$Movements %>%
+          filter(TAG %in% c(input$textinput2),
+                 movement_only %in% input$picker6
+                 # daily_unique_events %in% input$picker4,
+                 # State %in% input$picker5
+          )
+      } else { 
+        movements_data1 <- initial_states_data_list()$Movements %>%
+          filter(
+              movement_only %in% input$picker6
+            # daily_unique_events %in% input$picker4,
+            # State %in% input$picker5
+          )      
+      }
+      
+      
+      return(movements_data1)
     }) 
 
       
@@ -638,8 +743,7 @@ server <- function(input, output, session) {
       
       input$button5
       
-        datatable(
-          filtered_states_data(), #initial_states_data_list()$All_States
+        datatable(filtered_states_data(), #initial_states_data_list()$All_States
                   rownames = FALSE,
                   #extensions = c('Buttons'),
                   #for slider filter instead of text input
@@ -683,7 +787,7 @@ server <- function(input, output, session) {
     output$movements1 <- renderDT({
       
       
-      datatable(initial_states_data_list()$Movements,
+      datatable(filtered_movements_data(),
                 rownames = FALSE,
                 
                 filter = 'top',
@@ -698,6 +802,40 @@ server <- function(input, output, session) {
       
       
     })
+    
+
+# Movements Map Output ----------------------------------------------------
+
+    output$map1 <- renderLeaflet({
+      
+      
+      
+      
+      icons <- awesomeIcons(
+        icon = 'ios-close',
+        iconColor = filtered_movements_data()$icon_color,
+        library = 'ion',
+        markerColor = filtered_movements_data()$marker_color
+      )
+      
+      
+      
+      
+      leaflet(filtered_movements_data()) %>% #
+        addProviderTiles(providers$Esri.WorldImagery,options = providerTileOptions(maxZoom = 26)) %>%
+        addAwesomeMarkers(
+          clusterOptions = markerClusterOptions(),
+          lng=~X, lat = ~Y, icon = icons,
+          label = paste(filtered_movements_data()$movement_only, "\n",
+                        filtered_movements_data()$Date),
+          popup = paste(
+            "TAG:", filtered_movements_data()$TAG, "<br>",
+            "Release Site:", filtered_movements_data()$ReleaseSite, "<br>",
+            "Detection Event:", filtered_movements_data()$det_type, "<br>",
+            "Date:", as.character(filtered_movements_data()$Datetime)))
+      
+    })
+    
     
 
 # Download Handlers -------------------------------------------------------

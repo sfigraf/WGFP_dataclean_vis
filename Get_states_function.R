@@ -123,6 +123,14 @@ Get_states_function <- function(All_events, station_data) {
     group_by(TAG) %>%
     
     mutate(
+      det_type = case_when(str_detect(Event, "RB1|RB2") ~ "Red Barn Stationary Antenna",
+                           str_detect(Event, "HP3|HP4") ~ "Hitching Post Stationary Antenna",
+                           str_detect(Event, "CF5|CF6") ~ "Confluence Stationary Antenna",
+                           str_detect(Event, "B3") ~ "Windy Gap Dam Biomark Antenna",
+                           str_detect(Event, "B4") ~ "Kaibab Park Biomark Antenna",
+                           str_detect(Event, "M1|M2") ~ "Mobile Run",
+                           Event == "Recapture" ~ "Recapture",
+                           TRUE ~ Event),
       
       current_event_vals = case_when(Event == "RB1" ~ 11.9,
                                      Event == "RB2" ~ 11.1,
@@ -514,13 +522,14 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
     filter(is.na(teststate_11)) %>%
     select(Datetime, TAG, Event, teststate_11)
   
-  states_final <- states %>%
+  states1 <- states %>%
     filter(!is.na(teststate_11)) %>%
     group_by(Date, TAG) %>%
     #arranging my datetime ensures that all states will be recorded in the correct order
     arrange(Datetime) %>%
     mutate(
-      teststate_2 = paste(teststate_11, collapse = "")
+      teststate_2 = paste(teststate_11, collapse = ""),
+      
       
     )  %>%
     mutate(teststate_4 = gsub('([[:alpha:]])\\1+', '\\1', teststate_2), #removes consecutive letters
@@ -536,10 +545,17 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
                                    teststate_4 == "JIJI" ~ "JI",
                                    teststate_4 == "KLKL" ~ "KL",
                                    teststate_4 == "LKLK" ~ "LK",
-                                   TRUE ~ teststate_4)) %>% 
+                                   TRUE ~ teststate_4),
+           
+           ) 
+  
+  states_final <- states1 %>%
     distinct(Date, TAG, teststate_5, .keep_all = TRUE) %>%
-    select(Date, Datetime, TAG, teststate_5, Event, ReleaseSite, Species, Release_Length, Release_Weight, c_number_of_detections, daily_unique_events, days_since, UTM_X, UTM_Y) %>%
+    select(Date, Datetime, TAG, teststate_5, det_type, Event, ReleaseSite, Species, Release_Length, Release_Weight, c_number_of_detections, daily_unique_events, days_since, UTM_X, UTM_Y) %>%
     rename(State = teststate_5)
+  
+  
+    
   
     #select(Date, Datetime, first_last, Event, movement,  teststate_11, c_number_of_detections, daily_unique_events, ReleaseSite, RecaptureSite, TAG)
   # x <- r1 %>%
@@ -555,16 +571,74 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
       is.na(movement)
       )
   
-  movement_table <- r1 %>%
+  movement_table_notrans <- r1 %>%
     select(Date, Datetime, TAG, Event, movement,ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, UTM_X, UTM_Y) %>%
     group_by(TAG) %>%
     mutate(dist_moved = ET_STATION - lag(ET_STATION, order_by = Datetime),
            sum_dist = (sum(abs(diff(ET_STATION)))),
-           move2 = case_when(Event == "Release" ~ "Initial Release",
+           
+                                 
+           movement_only = case_when(Event == "Release" ~ "Initial Release",
              dist_moved == 0 ~ "No Movement",
                              dist_moved > 0 ~ "Upstream Movement",
-                             dist_moved < 0 ~ "Downstream Movement")
-           ) 
+                             dist_moved < 0 ~ "Downstream Movement"),
+           #this is for mapping later on
+           marker_color = case_when(movement_only == "No Movement" ~ "black",
+                                    movement_only == "Upstream Movement" ~ "green",
+                                    movement_only == "Downstream Movement" ~ "red",
+                                    str_detect(movement_only, "Initial Release") ~ "blue"),
+           
+           icon_color = case_when(str_detect(det_type, "Stationary Antenna") ~ "orange",
+                                  str_detect(det_type, "Biomark Antenna") ~ "yellow",
+                                  str_detect(det_type, "Mobile Run") ~ "purple",
+                                  str_detect(det_type, "Release") ~ "cyan",
+                                  str_detect(det_type, "Recapture") ~ "brown",
+              ),
+           X = as.numeric(UTM_X),
+           Y = as.numeric(UTM_Y)
+           ) #end of mutate
+  
+  attr(movement_table_notrans, "zone") = "13"
+  attr(movement_table_notrans, "projection") = "UTM"
+  attr(movement_table_notrans, "datum") = "GRS80"
+  
+  # need a column that has x and Y for this 
+  movement_table_notrans <- convUL(movement_table_notrans, km=FALSE, southern=NULL) #colorado is in utm zone 13
+    
+    ### This section is trying to make a concise movements+transitions column
+  # xx <- left_join(movement_table_notrans, states, by = c("Date", "Datetime", "TAG", "movement"))
+  # xx1 <- xx %>%
+  #   mutate(teststate_12 = case_when(is.na(teststate_11) ~ "",
+  #                                   TRUE ~ teststate_11),
+  #          movement_only_5 = case_when(movement_only == "No Movement" ~ "",
+  #                              TRUE ~ movement_only))
+  # xx2 <- xx1 %>%
+  #   #mutate(x1 <- Datetime.x == Datetime.y)
+  #   group_by(Date, TAG, det_type) %>%
+  #   arrange(Datetime) %>%
+  #   mutate( move3 = paste(movement_only_5, teststate_12, collapse = ""),
+  #     move4 = case_when(
+  #       # (movement_only == "Upstream Movement" & str_detect(movement, "Upstream Transition")) | movement == "Upstream Movement Before continuing Upstream to transition at that site" ~ paste("Upstream Movement and Transition at ",det_type),
+  #       #                       (movement_only == "Downstream Movement" & str_detect(movement, "Downstream Transition")) | movement == "Downstream Movement Before continuing downstream to transition at that site" ~ paste("Downstream Movement and Transition at ",det_type),
+  #                       str_detect(move3, "Upstream Movement") & str_detect(move3, " G| I| K") ~ paste("Upstream Movement and Transition on",det_type),
+  #                       str_detect(move3, "Downstream Movement") & str_detect(move3, " H| J| L") ~ paste("Downstream Movement and Transition on",det_type),
+  #                       str_detect(move3, "Upstream Movement") & str_detect(move3, " G| I| K", negate = TRUE) ~ paste("Upstream Movement on",det_type),
+  #                       str_detect(move3, "Downstream Movement") & str_detect(move3, " H| J| L", negate = TRUE) ~ paste("Downstream Movement on",det_type),
+  #                       str_detect(move3, "Initial Release") ~ paste("Initial Release at",ReleaseSite.x)
+  #                       
+  #                             #TRUE ~ movement_only
+  #   )#end of case_when)
+  #   ) %>%
+  #   distinct(TAG, Date, move4, .keep_all = TRUE)
+  # 
+  # movement_table_trans <- movement_table_notrans %>%
+  #   mutate( move3 = case_when((movement_only == "Upstream Movement" & str_detect(movement, "Upstream Transition")) | movement == "Upstream Movement Before continuing Upstream to transition at that site" ~ paste("Upstream Movement and Transition at ",det_type),
+  #                             (movement_only == "Downstream Movement" & str_detect(movement, "Downstream Transition")) | movement == "Downstream Movement Before continuing downstream to transition at that site" ~ paste("Downstream Movement and Transition at ",det_type),
+  #                             #TRUE ~ movement_only
+  #   )#end of case_when)
+  #   )
+    
+    
   
   #testState4 is really the realState
   # r3 <- r2 %>%
@@ -589,7 +663,7 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
   
   days_and_states_wide <- pivot_wider(days_and_states, id_cols = TAG, names_from = days_since, values_from = State)
   
-  states_df_list <- list("Movements" = movement_table, "All_States" = states_final, "Unaccounted_Movements" = unknown_movements, "Days_and_states_wide" = days_and_states_wide)
+  states_df_list <- list("Movements" = movement_table_notrans, "All_States" = states_final, "Unaccounted_Movements" = unknown_movements, "Days_and_states_wide" = days_and_states_wide)
   #this just tells how long the fucntion takes
   end_time <- Sys.time()
   print(paste("States Function took", round(end_time-start_time,2)))

@@ -267,7 +267,21 @@ ui <- fluidPage(
                          tabPanel("Movements",
                                   withSpinner(DT::dataTableOutput("movements1"))),
                          tabPanel("Movements Map",
-                                  withSpinner(leafletOutput("map1"))) #forgot to do LeafletOutput so the map wasn't showing up
+                                  radioButtons(inputId = "radiobuttons1",
+                                               label = "Select Data Frequency",
+                                               choices = c("days", "weeks"),
+                                               selected = "days",
+                                               inline = TRUE
+                                  ),
+                                  sliderInput("slider1", "Date",
+                                              min = min(df_list$All_Events$Date),
+                                              max = max(df_list$All_Events$Date), 
+                                              value = min(df_list$All_Events$Date),
+                                              step = 1,
+                                              timeFormat = "%d %b %y",
+                                              animate = animationOptions(interval = 500, loop = FALSE)
+                                  ),
+                                  withSpinner(leafletOutput("map1",height=1000))) #forgot to do LeafletOutput so the map wasn't showing up
                          
                         )#end of tabsetPanel
                       )#end of mainPanel
@@ -392,7 +406,31 @@ server <- function(input, output, session) {
   #     ) 
   #   
   # })
-    
+  
+  #create slider input depending on data frequency
+  # observe({
+  #   
+  #   # allDates <- unique(covidData$Date_reported)
+  #   # eligibleDates <- allDates[xts::endpoints(allDates, on = input$frequency)]
+  #   # 
+  #   if(input$slider1 == "weeks"){
+  #     stepSize = 7
+  #   }else{
+  #     stepSize = 1
+  #   }
+  #   
+  #   output$dateUI <- renderUI({
+  #     sliderInput("slider1", "Date",
+  #                 min = min(df_list$All_Events$Date),
+  #                 max = max(df_list$All_Events$Date),
+  #                 value = min(df_list$All_Events$Date),
+  #                 step = stepSize,
+  #                 timeFormat = "%d %b %y",
+  #                 animate = animationOptions(interval = 500, loop = FALSE)
+  #     )
+  #   })
+  # })
+  #   
 
 # Ind D Reactives ---------------------------------------------------------
     
@@ -593,6 +631,7 @@ server <- function(input, output, session) {
       if(input$textinput2 != ''){ 
         movements_data1 <- initial_states_data_list()$Movements %>%
           filter(TAG %in% c(input$textinput2),
+                 #Date == input$slider1,
                  movement_only %in% input$picker6
                  # daily_unique_events %in% input$picker4,
                  # State %in% input$picker5
@@ -600,6 +639,7 @@ server <- function(input, output, session) {
       } else { 
         movements_data1 <- initial_states_data_list()$Movements %>%
           filter(
+            #Date == input$slider1,
               movement_only %in% input$picker6
             # daily_unique_events %in% input$picker4,
             # State %in% input$picker5
@@ -821,8 +861,8 @@ server <- function(input, output, session) {
       
       
       
-      leaflet(filtered_movements_data()) %>% #
-        addProviderTiles(providers$Esri.WorldImagery,options = providerTileOptions(maxZoom = 26)) %>%
+      leaflet(filtered_movements_data()) %>% #Warning: Error in UseMethod: no applicable method for 'metaData' applied to an object of class "NULL"  solved becuase leaflet() needs an arg leaflet(x)
+        addProviderTiles(providers$Esri.WorldImagery,options = providerTileOptions()) %>%
         addAwesomeMarkers(
           clusterOptions = markerClusterOptions(),
           lng=~X, lat = ~Y, icon = icons,

@@ -572,7 +572,7 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
       )
   
   movement_table_notrans <- r1 %>%
-    select(Date, Datetime, TAG, Event, movement,ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, UTM_X, UTM_Y) %>%
+    select(Date, Datetime, TAG, det_type, Event, movement,ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, UTM_X, UTM_Y) %>%
     group_by(TAG) %>%
     mutate(dist_moved = ET_STATION - lag(ET_STATION, order_by = Datetime),
            sum_dist = (sum(abs(diff(ET_STATION)))),

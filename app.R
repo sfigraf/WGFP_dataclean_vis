@@ -44,10 +44,21 @@ Recaptures_05 <- Recaptures %>%
   mutate(Date = as.character(mdy(Date)))
 
 source("WGFP_EncounterHistoriesFunction.R")
+source("Combine_events_stations_function.R")
+source("get_movements_function.R")
 source("Get_states_function.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
 All_events <- df_list$All_Events
+
+combined_events_stations <- combine_events_and_stations(All_events, Stationdata1)
+
+Movements_df <- get_movements_function(combined_events_stations)
+
+Mx <- Movements_df %>%
+  filter(is.na(marker_color))
+
+
 
 #statesdf_list <- Get_states_function(All_events, Stationdata1)
 
@@ -209,7 +220,7 @@ ui <- fluidPage(
              ), #end of Encounter Histories Tab
 
 
-# States/Movements UI -----------------------------------------------------
+# States UI -----------------------------------------------------
 
 
             tabPanel("Daily States and Movements",
@@ -264,24 +275,8 @@ ui <- fluidPage(
                                   withSpinner(DT::dataTableOutput("states1"))),
                          tabPanel("States and Days Wide",
                                   withSpinner(DT::dataTableOutput("states2"))),
-                         tabPanel("Movements",
-                                  withSpinner(DT::dataTableOutput("movements1"))),
-                         tabPanel("Movements Map",
-                                  radioButtons(inputId = "radiobuttons1",
-                                               label = "Select Data Frequency",
-                                               choices = c("days", "weeks"),
-                                               selected = "days",
-                                               inline = TRUE
-                                  ),
-                                  sliderInput("slider1", "Date",
-                                              min = min(df_list$All_Events$Date),
-                                              max = max(df_list$All_Events$Date), 
-                                              value = min(df_list$All_Events$Date),
-                                              step = 1,
-                                              timeFormat = "%d %b %y",
-                                              animate = animationOptions(interval = 500, loop = FALSE)
-                                  ),
-                                  withSpinner(leafletOutput("map1",height=1000))) #forgot to do LeafletOutput so the map wasn't showing up
+                         
+                         
                          
                         )#end of tabsetPanel
                       )#end of mainPanel
@@ -289,52 +284,65 @@ ui <- fluidPage(
                      
                      ),#end of States and movements ui Tab
 
-# Map UI Tab --------------------------------------------------------------
-# tabPanel("Daily States and Movements Map",
-#          sidebarLayout(
-#            sidebarPanel(
-#              actionButton("button6", label = "Get States: Takes ~ 2 min", width = "100%",
-#                           onclick = "var $btn=$(this); setTimeout(function(){$btn.remove();},0);"),
-#              hr(),
-#              conditionalPanel(condition = "input.button6 == true",
-#                               textInput("textinput3", label = "Filter by TAG"),
-#                               pickerInput(inputId = "picker6",
-#                                           label = "Select Movement Type:",
-#                                           choices = c("No Movement", "Upstream Movement", "Downstream Movement"), #will need to be updated later on for uniqueness
-#                                           selected = c("No Movement", "Upstream Movement", "Downstream Movement"),
-#                                           multiple = TRUE,
-#                                           options = list(
-#                                             `actions-box` = TRUE #this makes the "select/deselect all" option
-#                                           )
-#                               
-#                               
-#                               ), #end of picker 6 input
-# 
-#                               # pickerInput(inputId = "picker7",
-#                               #             label = "States:",
-#                               #             choices = c(LETTERS[1:12]), #will need to be updated later on for uniqueness
-#                               #             selected = c(LETTERS[1:12]),
-#                               #             multiple = TRUE,
-#                               #             options = list(
-#                               #               `actions-box` = TRUE #this makes the "select/deselect all" option
-#                               #             )
-#                               #
-#                               #
-#                               # ), #end of picker 4 input
-#                               actionButton("button7", label = "Render Map", width = "100%")
-#              ) #end of conditional panel
-# 
-#            ),#end of sidebar panel
-#            mainPanel(tabsetPanel(
-#              tabPanel("Movements Map",
-#                       withSpinner(DT::dataTableOutput("map1")))
-# 
-# 
-#            )#end of tabsetPanel
-#            )#end of mainPanel
-#          )#end of sidebarLayout including sidebarPanel and Mainpanel
-# 
-# ),#end of Map ui Tab
+# Movements and Map UI Tab --------------------------------------------------------------
+
+### note on map: if detectoins are close together, they'll be grouped and you can't do more resolution. But they can still be upstream/downstream movements if they're >= 10 m difference in station
+#the filtering also automatically takes out NA values on movement with picker6; but all the NA movement onlys should be from fish where we have no release info for,
+#and also from fish that have detections before their offical "release" back in May
+#if marker_color or icon_color is NA, it wont get mapped or displayed in data
+            tabPanel("Daily Movements Map and Data",
+                     sidebarLayout(
+                       sidebarPanel(
+                                      textInput("textinput3", label = "Filter by TAG"),
+                                      pickerInput(inputId = "picker6",
+                                                  label = "Select Movement Type:",
+                                                  choices = sort(unique(Movements_df$movement_only)),
+                                                  selected = unique(Movements_df$movement_only),
+                                                  multiple = TRUE,
+                                                  options = list(
+                                                    `actions-box` = TRUE #this makes the "select/deselect all" option
+                                                  )
+        
+        
+                                      ), #end of picker 6 input
+                                      radioButtons(inputId = "radiobuttons1",
+                                                   label = "Select Data Frequency",
+                                                   choices = c("days", "weeks"),
+                                                   selected = "days",
+                                                   inline = TRUE
+                                      ),
+                                      sliderInput("slider1", "Date",
+                                                  min = min(df_list$All_Events$Date),
+                                                  max = max(df_list$All_Events$Date), 
+                                                  value = min(df_list$All_Events$Date),
+                                                  step = 1,
+                                                  timeFormat = "%d %b %y",
+                                                  animate = animationOptions(interval = 500, loop = FALSE)
+                                      ),
+        
+                                      # pickerInput(inputId = "picker7",
+                                      #             label = "States:",
+                                      #             choices = c(LETTERS[1:12]), #will need to be updated later on for uniqueness
+                                      #             selected = c(LETTERS[1:12]),
+                                      #             multiple = TRUE,
+                                      #             options = list(
+                                      #               `actions-box` = TRUE #this makes the "select/deselect all" option
+                                      #             )
+                                      #
+                                      #
+                                      # ), #end of picker 7 input
+                                      actionButton("button7", label = "Render Map and Data")
+
+                       ),#end of sidebar panel
+                       mainPanel(
+                                  withSpinner(leafletOutput("map1",height=700)), #forgot to do LeafletOutput so the map wasn't showing up
+                                  withSpinner(DT::dataTableOutput("movements1")),
+            
+            
+                       )#end of mainPanel
+                     )#end of sidebarLayout including sidebarPanel and Mainpanel
+            
+            ),#end of Map ui Tab
 
 
          
@@ -391,11 +399,11 @@ server <- function(input, output, session) {
                       choices = sort(unique(initial_states_data_list()$All_States$State)),
                       selected = unique(initial_states_data_list()$All_States$State)
     )
-    
-    updatePickerInput(session, "picker6",
-                    choices = sort(unique(initial_states_data_list()$Movements$movement_only)),
-                    selected = unique(initial_states_data_list()$Movements$movement_only)
-    )
+    # can be deleted in a bit
+    # updatePickerInput(session, "picker6",
+    #                 choices = sort(unique(Movements_df$movement_only)),
+    #                 selected = unique(Movements_df$movement_only)
+    # )
   })
   
   # #when make states button is pressed for the map UI, update picker
@@ -596,7 +604,7 @@ server <- function(input, output, session) {
     #want it so that when the first button4 is pressed, the whole dataset is made
     #then after that i want to render the table with button5 along with filters
     initial_states_data_list <- eventReactive(input$button4,{
-      states_data1_list <- Get_states_function(df_list$All_Events, Stationdata1)
+      states_data1_list <- Get_states_function(combined_events_stations)
       
       
       return(states_data1_list)
@@ -626,25 +634,27 @@ server <- function(input, output, session) {
 # Movement Data Reactives -------------------------------------------------
 
     
-    filtered_movements_data <- eventReactive(input$button5,{
+    filtered_movements_data <- eventReactive(input$button7,{
+      movements_data1 <- Movements_df %>%
+        filter(movement_only %in% input$picker6)
       
-      if(input$textinput2 != ''){ 
-        movements_data1 <- initial_states_data_list()$Movements %>%
-          filter(TAG %in% c(input$textinput2),
-                 #Date == input$slider1,
-                 movement_only %in% input$picker6
-                 # daily_unique_events %in% input$picker4,
-                 # State %in% input$picker5
-          )
-      } else { 
-        movements_data1 <- initial_states_data_list()$Movements %>%
-          filter(
-            #Date == input$slider1,
-              movement_only %in% input$picker6
-            # daily_unique_events %in% input$picker4,
-            # State %in% input$picker5
-          )      
-      }
+      # if(input$textinput3 != ''){
+      #   movements_data1 <- Movements_df %>%
+      #     filter(TAG %in% c(input$textinput3),
+      #            #Date == input$slider1,
+      #            movement_only %in% c(input$picker6)
+      #            # daily_unique_events %in% input$picker4,
+      #            # State %in% input$picker5
+      #     )
+      # } else {
+      #   movements_data1 <- Movements_df  %>% #initial_states_data_list()$Movements
+      #     filter(
+      #       #Date == input$slider1,
+      #         movement_only %in% c(input$picker6)
+      #       # daily_unique_events %in% input$picker4,
+      #       # State %in% input$picker5
+      #     )
+      # }
       
       
       return(movements_data1)

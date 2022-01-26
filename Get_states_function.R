@@ -22,7 +22,7 @@
 
 #station_data <- Stationdata1
 
-Get_states_function <- function(All_events, station_data) {
+Get_states_function <- function(All_events_stations_combined) {
   library(tidyverse) 
   library(lubridate)
   
@@ -31,92 +31,92 @@ Get_states_function <- function(All_events, station_data) {
 
 # Combining stations into all_events dataset ------------------------------
   #just getting distinct rows makes joining easier; all we need from this df is stations
-  stations <- station_data %>%
-    rename(
-      Datetime = Datetime_,
-      Time = Time_) %>%
-    mutate(
-      Date = mdy(Date_),
-      ET_STATION = case_when(station_data$River %in% "Fraser River" ~ station_data$ET_STATION + 9566, #9566 is above Fraser River Confluence
-                                  station_data$River %in% "Colorado River" ~ station_data$ET_STATION)) %>%
-    distinct(Event, UTM_X, UTM_Y, TAG, .keep_all = TRUE) %>%
-    select(-Date_)
-    
-  
-  #massive datafrmae occurs when there are multiple rows in B for which the key columns (same-name columns by default) match the same, single row in A
-  #usually this means you have to make sure you join by the fields which will not have any differenitation: iun this case, "TAG", UTM_X", "UTM_Y", and "Event". The other fields are just to help keep the dataframe more concise
-  
-  all_events_stations_2 <- left_join(All_events, stations, by = c("TAG", "UTM_X", "UTM_Y", "Event")) # "Species", "Release_Length", "Release_Weight", "Event", "Date", "Time", "ReleaseSite", "Release_Date", "RecaptureSite", "Recap_Length", "Recap_Weight"
-  
-  all_events_stations_21 <- all_events_stations_2 %>%
-    filter(is.na(ET_STATION))
+#   stations <- station_data %>%
+#     rename(
+#       Datetime = Datetime_,
+#       Time = Time_) %>%
+#     mutate(
+#       Date = mdy(Date_),
+#       ET_STATION = case_when(station_data$River %in% "Fraser River" ~ station_data$ET_STATION + 9566, #9566 is above Fraser River Confluence
+#                                   station_data$River %in% "Colorado River" ~ station_data$ET_STATION)) %>%
+#     distinct(Event, UTM_X, UTM_Y, TAG, .keep_all = TRUE) %>%
+#     select(-Date_)
+#     
+#   
+#   #massive datafrmae occurs when there are multiple rows in B for which the key columns (same-name columns by default) match the same, single row in A
+#   #usually this means you have to make sure you join by the fields which will not have any differenitation: iun this case, "TAG", UTM_X", "UTM_Y", and "Event". The other fields are just to help keep the dataframe more concise
+#   
+#   all_events_stations_2 <- left_join(All_events, stations, by = c("TAG", "UTM_X", "UTM_Y", "Event")) # "Species", "Release_Length", "Release_Weight", "Event", "Date", "Time", "ReleaseSite", "Release_Date", "RecaptureSite", "Recap_Length", "Recap_Weight"
+#   
+#   all_events_stations_21 <- all_events_stations_2 %>%
+#     filter(is.na(ET_STATION))
+# 
+#   All_events_stations_3 <- all_events_stations_2 %>%
+#     # select(-ET_STATION) %>%
+#     # rename(ET_STATION = ET_STATION1) %>%
+#     mutate(ET_STATION = case_when(
+#                                   (Event %in% c("RB1", "RB2")) ~ 4150, # 
+#                                   is.na(ET_STATION) & (Event %in% c("HP3", "HP4")) ~ 6340,
+#                                   is.na(ET_STATION) & (Event %in% c("CF5", "CF6")) ~ 9550,
+#                                   is.na(ET_STATION) & (Event %in% c("B3")) ~ 8290,
+#                                   !is.na(ET_STATION) & (!Event %in% c("RB1", "RB2")) ~ ET_STATION)) %>%
+#     # this line just makes the df smaller if htere are duplicates; usually doesn't change anything
+#     distinct(Datetime.x, Event, TAG, .keep_all =TRUE) %>%
+#     rename(
+#       
+#       Date = Date.x,
+#       Time = Time.x,
+#       Datetime = Datetime.x,
+#       
+#       Species = Species.x,
+#       Release_Length = Release_Length.x,
+#       Release_Weight = Release_Weight.x, 
+#       ReleaseSite = ReleaseSite.x,
+#       Release_Date = Release_Date.x,
+#       RecaptureSite = RecaptureSite.x,
+#       Recap_Length = Recap_Length.x,
+#       Recap_Weight = Recap_Weight.x
+#       
+#     ) %>%
+#     select(Date, Time, Datetime, TAG, Event, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, River, Recap_Length, Recap_Weight, UTM_X, UTM_Y, ET_STATION)
+#   
+# 
+# # Days_since and Prev_event -----------------------------------------------
+# 
+#   
+#   All_events_days <- All_events_stations_3 %>%
+#     mutate(days_since = as.numeric(ceiling(difftime(Date, min(Date), units = "days")))
+#     )
+#   
+#   
+#   All_events_days1 <- All_events_days %>%
+#     #filter(!Event %in% c("M1", "M2")) %>% #filtering out mobile detections for now
+#     
+#     group_by(Date, TAG) %>%
+#     mutate(first_last = case_when(Datetime == min(Datetime) & Event != "Release" ~ "First_of_day",
+#                                   Datetime == max(Datetime) ~ "Last_of_day",
+#                                   Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0",
+#                                   #Event == "Release" ~ "Last_of_day"
+#                                   ),
+#            c_number_of_detections = n(),
+#            daily_unique_events = length(unique(Event))
+#     ) %>%
+#     ungroup() %>%
+#     distinct(TAG, Event, Date, first_last, UTM_X, UTM_Y, .keep_all = TRUE) %>%
+#     
+#     group_by(TAG) %>%
+#     mutate(
+#       previous_event = lag(Event, order_by = Datetime)
+#       # next_event = lead(Event, order_by = Datetime),
+#       # next_event_2 = lead(Event, n = 2, order_by = Datetime
+#                           # ),
+#       
+#       #same_day_next_events = (lead(Date, order_by = Datetime) == lead(Date, n = 2, order_by = Datetime))
+#   ) %>%
+#     
+#     select(Date, Datetime,TAG,Event,ReleaseSite,Species, Release_Length, Release_Weight, Release_Date, RecaptureSite, River, days_since, first_last, previous_event,  c_number_of_detections, daily_unique_events, ET_STATION, UTM_X, UTM_Y) #next_event, next_event_2, same_day_next_events,
 
-  All_events_stations_3 <- all_events_stations_2 %>%
-    # select(-ET_STATION) %>%
-    # rename(ET_STATION = ET_STATION1) %>%
-    mutate(ET_STATION = case_when(
-                                  (Event %in% c("RB1", "RB2")) ~ 4150, # 
-                                  is.na(ET_STATION) & (Event %in% c("HP3", "HP4")) ~ 6340,
-                                  is.na(ET_STATION) & (Event %in% c("CF5", "CF6")) ~ 9550,
-                                  is.na(ET_STATION) & (Event %in% c("B3")) ~ 8290,
-                                  !is.na(ET_STATION) & (!Event %in% c("RB1", "RB2")) ~ ET_STATION)) %>%
-    # this line just makes the df smaller if htere are duplicates; usually doesn't change anything
-    distinct(Datetime.x, Event, TAG, .keep_all =TRUE) %>%
-    rename(
-      
-      Date = Date.x,
-      Time = Time.x,
-      Datetime = Datetime.x,
-      
-      Species = Species.x,
-      Release_Length = Release_Length.x,
-      Release_Weight = Release_Weight.x, 
-      ReleaseSite = ReleaseSite.x,
-      Release_Date = Release_Date.x,
-      RecaptureSite = RecaptureSite.x,
-      Recap_Length = Recap_Length.x,
-      Recap_Weight = Recap_Weight.x
-      
-    ) %>%
-    select(Date, Time, Datetime, TAG, Event, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, River, Recap_Length, Recap_Weight, UTM_X, UTM_Y, ET_STATION)
-  
-
-# Days_since and Prev_event -----------------------------------------------
-
-  
-  All_events_days <- All_events_stations_3 %>%
-    mutate(days_since = as.numeric(ceiling(difftime(Date, min(Date), units = "days")))
-    )
-  
-  
-  All_events_days1 <- All_events_days %>%
-    #filter(!Event %in% c("M1", "M2")) %>% #filtering out mobile detections for now
-    
-    group_by(Date, TAG) %>%
-    mutate(first_last = case_when(Datetime == min(Datetime) & Event != "Release" ~ "First_of_day",
-                                  Datetime == max(Datetime) ~ "Last_of_day",
-                                  Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0",
-                                  #Event == "Release" ~ "Last_of_day"
-                                  ),
-           c_number_of_detections = n(),
-           daily_unique_events = length(unique(Event))
-    ) %>%
-    ungroup() %>%
-    distinct(TAG, Event, Date, first_last, UTM_X, UTM_Y, .keep_all = TRUE) %>%
-    
-    group_by(TAG) %>%
-    mutate(
-      previous_event = lag(Event, order_by = Datetime)
-      # next_event = lead(Event, order_by = Datetime),
-      # next_event_2 = lead(Event, n = 2, order_by = Datetime
-                          # ),
-      
-      #same_day_next_events = (lead(Date, order_by = Datetime) == lead(Date, n = 2, order_by = Datetime))
-  ) %>%
-    
-    select(Date, Datetime,TAG,Event,ReleaseSite,Species, Release_Length, Release_Weight, Release_Date, RecaptureSite, River, days_since, first_last, previous_event,  c_number_of_detections, daily_unique_events, ET_STATION, UTM_X, UTM_Y) #next_event, next_event_2, same_day_next_events,
-
-  r1 <- All_events_days1 %>%
+  r1 <- All_events_stations_combined %>%
     # no need to group_by date until states will be consolidated
     # need to group_by tag though so that the Lag(Date) will get the last date that that fish was detected
     # some movements weren't being recorded correctly because it was grouping by both date and Tag
@@ -571,39 +571,39 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
       is.na(movement)
       )
   
-  movement_table_notrans <- r1 %>%
-    select(Date, Datetime, TAG, det_type, Event, movement,ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, UTM_X, UTM_Y) %>%
-    group_by(TAG) %>%
-    mutate(dist_moved = ET_STATION - lag(ET_STATION, order_by = Datetime),
-           sum_dist = (sum(abs(diff(ET_STATION)))),
-           
-                                 
-           movement_only = case_when(Event == "Release" ~ "Initial Release",
-             dist_moved == 0 ~ "No Movement",
-                             dist_moved > 0 ~ "Upstream Movement",
-                             dist_moved < 0 ~ "Downstream Movement"),
-           #this is for mapping later on
-           marker_color = case_when(movement_only == "No Movement" ~ "black",
-                                    movement_only == "Upstream Movement" ~ "green",
-                                    movement_only == "Downstream Movement" ~ "red",
-                                    str_detect(movement_only, "Initial Release") ~ "blue"),
-           
-           icon_color = case_when(str_detect(det_type, "Stationary Antenna") ~ "orange",
-                                  str_detect(det_type, "Biomark Antenna") ~ "yellow",
-                                  str_detect(det_type, "Mobile Run") ~ "purple",
-                                  str_detect(det_type, "Release") ~ "cyan",
-                                  str_detect(det_type, "Recapture") ~ "brown",
-              ),
-           X = as.numeric(UTM_X),
-           Y = as.numeric(UTM_Y)
-           ) #end of mutate
-  
-  attr(movement_table_notrans, "zone") = "13"
-  attr(movement_table_notrans, "projection") = "UTM"
-  attr(movement_table_notrans, "datum") = "GRS80"
-  
-  # need a column that has x and Y for this 
-  movement_table_notrans <- convUL(movement_table_notrans, km=FALSE, southern=NULL) #colorado is in utm zone 13
+  # movement_table_notrans <- r1 %>%
+  #   select(Date, Datetime, TAG, det_type, Event, movement,ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, UTM_X, UTM_Y) %>%
+  #   group_by(TAG) %>%
+  #   mutate(dist_moved = ET_STATION - lag(ET_STATION, order_by = Datetime),
+  #          sum_dist = (sum(abs(diff(ET_STATION)))),
+  #          
+  #                                
+  #          movement_only = case_when(Event == "Release" ~ "Initial Release",
+  #            dist_moved == 0 ~ "No Movement",
+  #                            dist_moved > 0 ~ "Upstream Movement",
+  #                            dist_moved < 0 ~ "Downstream Movement"),
+  #          #this is for mapping later on
+  #          marker_color = case_when(movement_only == "No Movement" ~ "black",
+  #                                   movement_only == "Upstream Movement" ~ "green",
+  #                                   movement_only == "Downstream Movement" ~ "red",
+  #                                   str_detect(movement_only, "Initial Release") ~ "blue"),
+  #          
+  #          icon_color = case_when(str_detect(det_type, "Stationary Antenna") ~ "orange",
+  #                                 str_detect(det_type, "Biomark Antenna") ~ "yellow",
+  #                                 str_detect(det_type, "Mobile Run") ~ "purple",
+  #                                 str_detect(det_type, "Release") ~ "cyan",
+  #                                 str_detect(det_type, "Recapture") ~ "brown",
+  #             ),
+  #          X = as.numeric(UTM_X),
+  #          Y = as.numeric(UTM_Y)
+  #          ) #end of mutate
+  # 
+  # attr(movement_table_notrans, "zone") = "13"
+  # attr(movement_table_notrans, "projection") = "UTM"
+  # attr(movement_table_notrans, "datum") = "GRS80"
+  # 
+  # # need a column that has x and Y for this 
+  # movement_table_notrans <- convUL(movement_table_notrans, km=FALSE, southern=NULL) #colorado is in utm zone 13
     
     ### This section is trying to make a concise movements+transitions column
   # xx <- left_join(movement_table_notrans, states, by = c("Date", "Datetime", "TAG", "movement"))
@@ -663,7 +663,7 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
   
   days_and_states_wide <- pivot_wider(days_and_states, id_cols = TAG, names_from = days_since, values_from = State)
   
-  states_df_list <- list("Movements" = movement_table_notrans, "All_States" = states_final, "Unaccounted_Movements" = unknown_movements, "Days_and_states_wide" = days_and_states_wide)
+  states_df_list <- list("All_States" = states_final, "Unaccounted_Movements" = unknown_movements, "Days_and_states_wide" = days_and_states_wide)
   #this just tells how long the fucntion takes
   end_time <- Sys.time()
   print(paste("States Function took", round(end_time-start_time,2)))
@@ -672,6 +672,6 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
 }
 
 
-#statesdf_list <- Get_states_function(All_events, station_data)
+#statesdf_list <- Get_states_function(combined_events_stations)
 # statesdf <- statesdf_list$All_States
 #####################

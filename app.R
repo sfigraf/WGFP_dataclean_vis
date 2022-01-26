@@ -254,17 +254,7 @@ ui <- fluidPage(
                                                       
                                                       
                                           ), #end of picker 5 input 
-                                          pickerInput(inputId = "picker6",
-                                                      label = "Select Movement Type: Movements DF and map",
-                                                      choices = c("No Movement", "Upstream Movement", "Downstream Movement", "Initial Release"), #will need to be updated later on for uniqueness
-                                                      selected = c("No Movement", "Upstream Movement", "Downstream Movement", "Initial Release"),
-                                                      multiple = TRUE,
-                                                      options = list(
-                                                        `actions-box` = TRUE #this makes the "select/deselect all" option
-                                                      )
-                                                      
-                                                      
-                                          ), #end of picker 6 input
+                                          
                                           
                                           actionButton("button5", label = "Render Table/Data", width = "100%")
                                           ) #end of conditional panel
@@ -399,21 +389,10 @@ server <- function(input, output, session) {
                       choices = sort(unique(initial_states_data_list()$All_States$State)),
                       selected = unique(initial_states_data_list()$All_States$State)
     )
-    # can be deleted in a bit
-    # updatePickerInput(session, "picker6",
-    #                 choices = sort(unique(Movements_df$movement_only)),
-    #                 selected = unique(Movements_df$movement_only)
-    # )
+   
   })
   
-  # #when make states button is pressed for the map UI, update picker
-  # observeEvent(input$button6,{
-  #   updatePickerInput(session, "picker6",
-  #                     choices = sort(unique(initial_states_data_list()$All_States$State)),
-  #                     selected = unique(initial_states_data_list()$All_States$State)
-  #     ) 
-  #   
-  # })
+  
   
   #create slider input depending on data frequency
   # observe({
@@ -635,26 +614,26 @@ server <- function(input, output, session) {
 
     
     filtered_movements_data <- eventReactive(input$button7,{
-      movements_data1 <- Movements_df %>%
-        filter(movement_only %in% input$picker6)
+      # movements_data1 <- Movements_df %>%
+      #   filter(movement_only %in% input$picker6)
       
-      # if(input$textinput3 != ''){
-      #   movements_data1 <- Movements_df %>%
-      #     filter(TAG %in% c(input$textinput3),
-      #            #Date == input$slider1,
-      #            movement_only %in% c(input$picker6)
-      #            # daily_unique_events %in% input$picker4,
-      #            # State %in% input$picker5
-      #     )
-      # } else {
-      #   movements_data1 <- Movements_df  %>% #initial_states_data_list()$Movements
-      #     filter(
-      #       #Date == input$slider1,
-      #         movement_only %in% c(input$picker6)
-      #       # daily_unique_events %in% input$picker4,
-      #       # State %in% input$picker5
-      #     )
-      # }
+      if(input$textinput3 != ''){
+        movements_data1 <- Movements_df %>%
+          filter(TAG %in% c(input$textinput3),
+                 #Date == input$slider1,
+                 movement_only %in% c(input$picker6)
+                 # daily_unique_events %in% input$picker4,
+                 # State %in% input$picker5
+          )
+      } else {
+        movements_data1 <- Movements_df  %>% #initial_states_data_list()$Movements
+          filter(
+            #Date == input$slider1,
+              movement_only %in% c(input$picker6)
+            # daily_unique_events %in% input$picker4,
+            # State %in% input$picker5
+          )
+      }
       
       
       return(movements_data1)

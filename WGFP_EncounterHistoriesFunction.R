@@ -13,7 +13,40 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     mutate(TAG = str_replace(str_trim(TAG), "\\_", "")) %>%
     filter(str_detect(TAG, "^900"), 
            !TAG %in% c("900230000102751","900226001581072","900230000004000"))
+
+#marker tag only file 
+  Markers_only <- Stationary %>%
+    mutate(TAG = str_replace(str_trim(TAG), "\\_", "")) %>%
+    filter(
+      str_detect(TAG, "^0000000")
+    )
   
+  Markers_only1 <- Markers_only %>%
+    mutate(
+      DTY = 
+        ifelse(str_detect(DTY, "/"), 
+                   as.character(mdy(DTY)), 
+                   DTY),
+      DTY2 = as.Date(DTY))
+      
+  
+  Markers_only2 <- Markers_only1 %>%
+    #this is the same process that all_detections goes through
+    mutate(Scan_Time1 = case_when(str_detect(ARR, "AM") & str_detect(ARR, "^12:") ~ hms(ARR) - hours(12),
+                                 str_detect(ARR, "PM") & str_detect(ARR, "^12:") ~ hms(ARR),
+                                 
+                                 str_detect(ARR, "AM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR),
+                                 str_detect(ARR, "PM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR) + hours(12),
+                                 #if it doesn't detect PM or AM just do hms(ARR)
+                                 str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR)),
+           Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
+           CleanARR = str_sub(Scan_Time2, start = 11, end = -1)
+    ) %>%
+    
+    select(Code, DTY2, ARR, CleanARR, TRF, DUR, TTY, TAG, SCD, ANT, NCD, EFA) %>%
+    rename(DTY = DTY2)
+    
+  ## rest of getting "clean" windy gap stationary data
   ### Subset Detection Type "Codes" to only include Summary (S) and Individual (I) ###
   WGFP_Clean= data.frame(WGFP_NoMarkers[which(WGFP_NoMarkers$Code == "I" | WGFP_NoMarkers$Code == "S"),])
   
@@ -96,18 +129,19 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
                                     str_detect(Scan_Time, "PM|AM") == FALSE ~ hms(Scan_Time)),
       ) %>%
       mutate(Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
-             Scan_Time3 = str_sub(Scan_Time2, start = 11, end = -1)) %>%
-      select(Scan_Date, Scan_Time, Scan_Time3, TAG, Site_Code, UTM_X, UTM_Y ) #%>%
-      #rename(Scan_Time = (Scan_Time3))
+             clean_time = str_sub(Scan_Time2, start = 11, end = -1)) %>%
+      
+      select(Scan_Date, clean_time, TAG, Site_Code, UTM_X, UTM_Y ) #%>%
+      #rename(Scan_Time = (clean_time))
   }
   
-  All_detections <- All_detections %>%
+  All_detections2 <- All_detections1 %>%
     filter(Scan_Date >= as.Date("2020-08-06")) %>% #right before the first date of marker tag detections on stationary antennas
     mutate(
       #datetime1 = as.POSIXct(paste(Scan_Date, Scan_Time),format="%Y-%m-%d %H:%M:%S"), #this line works too
-      Scan_DateTime = ymd_hms(paste(Scan_Date, Scan_Time))) %>%
+      Scan_DateTime = ymd_hms(paste(Scan_Date, clean_time))) %>%
     #rename(Scan_DateTime = datetime2) %>%
-    select(Scan_Date, Scan_Time, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
+    select(Scan_Date, clean_time, Scan_DateTime, TAG, Site_Code, UTM_X, UTM_Y )
   
 ### all detections and recaps and release "EVENTS" DF
   
@@ -139,10 +173,10 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
     )
   
   #getting all detections file ready to merge with encounters
-  All_Detections_1_merge <- All_detections %>%
+  All_Detections_1_merge <- All_detections2 %>%
     mutate(Date = as.Date(Scan_Date)) %>%
     rename(
-      Time = Scan_Time,
+      Time = clean_time,
       DateTime = Scan_DateTime,
       Event = Site_Code) 
   
@@ -295,8 +329,8 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            Mobile = (M1_n > 0 | M2_n >0)) %>%
     filter(!UTM_X %in% c(0, NA)) # one way to filter out tags that don't have any sort of release data; usually if they're entered in release file then they have UTM's
   
-  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_detections, 
-                  "All_Events" = filled_in_release_rows_condensed, "Unknown_Tags" = unknown_tags)
+  df_list <- list("ENC_ALL" = ENC_ALL, "WGFP_Clean" = WGFP_Clean, "ENC_Release2" = ENC_Release2, "All_Detections" = All_detections2, 
+                  "All_Events" = filled_in_release_rows_condensed, "Marker_Tag_data" = Markers_only2, "Unknown_Tags" = unknown_tags)
   
   end_time <- Sys.time()
   print(paste("EncounterHistories Function took", round(end_time-start_time,2), "Seconds"))

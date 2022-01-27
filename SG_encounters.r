@@ -1676,13 +1676,15 @@ Markers_only_test <- Markers_only1 %>%
   #        #ARR <= hms::as_hms('13:00:00'),
   #        #str_detect(ARR, c("AM|PM"))
   #        ) %>%
-  mutate(betterARR = case_when(str_detect(ARR, "AM") & str_detect(ARR, "^12:") ~ hms(ARR) - hours(12),
-                               str_detect(ARR, "AM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR),
-                               str_detect(ARR, "PM") ~ hms(ARR) + hours(12),
-                               #if it doesn't detect PM or AM just do hms(Scan_Time)
-                               str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR)),
-         Scan_Time2 = as.character(as_datetime(betterARR)), 
-         Scan_Time3 = str_sub(Scan_Time2, start = 11, end = -1)
+  mutate(Scan_Time1 = case_when(str_detect(ARR, "AM") & str_detect(ARR, "^12:") ~ hms(ARR) - hours(12),
+                                str_detect(ARR, "PM") & str_detect(ARR, "^12:") ~ hms(ARR),
+                                
+                                str_detect(ARR, "AM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR),
+                                str_detect(ARR, "PM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR) + hours(12),
+                                #if it doesn't detect PM or AM just do hms(ARR)
+                                str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR)),
+         Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
+         CleanARR = str_sub(Scan_Time2, start = 11, end = -1)
          )
 
 
@@ -1695,6 +1697,7 @@ y <- Markers_only_test %>%
   theme_classic() +
   theme(
     axis.text.y = element_blank(),
+    axis.text.x = element_blank(),
     axis.ticks = element_blank())
 
 y
@@ -1739,7 +1742,7 @@ y <- s %>%
     axis.text.y = element_blank(),
     axis.ticks = element_blank())
 
-y <- s %>%
+y <- Stationary %>%
   filter(TAG == "0000_0000000000005394") %>%
   #distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
   #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
@@ -1748,6 +1751,7 @@ y <- s %>%
   theme_classic() +
   theme(
     axis.text.y = element_blank(),
+    axis.text.x = element_blank(),
     axis.ticks = element_blank())
 
 y
@@ -1913,25 +1917,50 @@ x <- anti_join(cf5, cf6)
 x1 <- cf6 %>%
   filter(is.na(DTY))
 
-plot <- movement_table %>%
-  filter(!move2 %in% c("No Movement", "Initial Release")) %>%
-  mutate(weeks_since = as.numeric(ceiling(difftime(Date, min(Date), units = "weeks")))
-  ) %>%
-  ggplot(aes(x = Date, fill = move2)) +
+movements_df1 <- Movements_df %>%
+  filter(
+    !is.na(movement_only),
+    !movement_only %in% c("No Movement", "Initial Release"),
+         #Date >= input$slider1[1] & Date <= input$slider1[2]
+         ) %>%
+  mutate(weeks_since = as.numeric(ceiling(difftime(Date, min(Date), units = "weeks"))),
+         Date1 = as.character(Date)
+         )
+   
+plot <- movements_df1 %>%
+  ggplot(aes(x = Date, fill = movement_only,
+             text = paste('Date: ', as.character(Date), '\n'))
+         ) +
   geom_bar(stat = "count", position = "dodge") +
-  theme_classic()
+  theme_classic() +
+  labs(title="Fish Movement by Day",
+       x ="Date", y = "Count") +
+  scale_fill_manual(values = c("Downstream Movement" = "red",
+                               "Upstream Movement" = "chartreuse3",
+                               "No Movement" = "black",
+                               "Initial Release" = "darkorange"))
+  #scale_x_discrete(breaks = c("2020", "2021"))
+  # theme(axis.text.x = element_text( color="#993333", 
+  #                                  #size=14, 
+  #                                  angle=45))
+plot
+plotly1 <- ggplotly(p = plot)
+#?ggplotly
 plotly1
-plotly1 <- ggplotly(plot)
+
+
 plotly2 <- plotly1 %>%
-  #hover
+  #hovertemplate = 
+  # #hover
   layout(
-    hoverinfo = 'text',
-    #hovertext = paste("Date"),
-  # xaxis = list(
-  #   type = "date"
-  #   #tickformat = "%Y %m %d"
-  # )
+    #hovermode = "x unified"
+  #   hoverinfo = 'text',
+     hovertext = "y" #paste("Date"),
+    # xaxis = list(
+    # type = "date",
+    # tickformat = "%Y %m %d"
   )
+  
 
 plotly2
 #library(plotly)
@@ -1946,3 +1975,13 @@ x <- r2 %>%
 
 qDat <- quakes
 qDat$id <- seq.int(nrow(qDat))
+
+# Release L W plot --------------------------------------------------------
+
+plot3 <- Release %>%
+  ggplot(aes(x = Length, y = Weight, color = Species)) +
+  geom_point() + 
+  theme_classic() +
+  labs(title = "Length/Weight Plot for Release Data")
+
+ggplotly(plot3)

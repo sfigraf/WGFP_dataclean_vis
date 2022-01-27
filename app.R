@@ -51,7 +51,7 @@ source("Get_states_function.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
 All_events <- df_list$All_Events
-
+Marker_tags <- df_list$Marker_Tag_data
 combined_events_stations <- combine_events_and_stations(All_events, Stationdata1)
 
 Movements_df <- get_movements_function(combined_events_stations)
@@ -283,7 +283,7 @@ ui <- fluidPage(
 #and also from fish that have detections before their offical "release" back in May
 #if marker_color or icon_color is NA, it wont get mapped or displayed in data
 #picker wasn't wokring becuase I had 2 differnt pick
-            tabPanel("Daily Movements Map and Data",
+            tabPanel("Daily Movements Map, Plot, and Data",
                      sidebarLayout(
                        sidebarPanel(
                                       textInput("textinput3", label = "Filter by TAG"),
@@ -339,11 +339,78 @@ ui <- fluidPage(
             
             ),#end of Map ui Tab
 
+# QAQC UI tab -------------------------------------------------------------
+
+          tabPanel("QAQC",
+                   tabsetPanel(
+                     tabPanel("Marker Tags",
+                              sidebarLayout(
+                                sidebarPanel(
+                                  pickerInput(inputId = "picker8",
+                                              label = "Select Site Code",
+                                              choices = sort(unique(df_list$Marker_Tag_data$SCD)),
+                                              selected = unique(df_list$Marker_Tag_data$SCD),
+                                              multiple = TRUE,
+                                              options = list(
+                                                `actions-box` = TRUE #this makes the "select/deselect all" option
+                                              )
+                                ), #end of picker 8
+                                  pickerInput(inputId = "picker9",
+                                              label = "Select Marker Tag",
+                                              choices = sort(unique(df_list$Marker_Tag_data$TAG)),
+                                              selected = unique(df_list$Marker_Tag_data$TAG)[1],
+                                              multiple = TRUE,
+                                              options = list(
+                                                `actions-box` = TRUE #this makes the "select/deselect all" option
+                                              )
+                                  ), #end of picker 9 
+                              sliderInput("slider2", "Date",
+                                          min = min(df_list$Marker_Tag_data$DTY -1),
+                                          max = max(df_list$Marker_Tag_data$DTY +1),  
+                                          value = c(min(df_list$Marker_Tag_data$DTY -1),max(df_list$Marker_Tag_data$DTY +1)),
+                                          step = 1,
+                                          timeFormat = "%d %b %y",
+                                          #animate = animationOptions(interval = 500, loop = FALSE)
+                              ),
+                              actionButton("button8", label = "Render Marker Tag Plot")
+                                ), #end of sidebar panel
+                              mainPanel(
+                                splitLayout(
+                                  withSpinner(DT::dataTableOutput("markertags1")),
+                                  withSpinner(plotlyOutput("plot2"))
+                                  
+                                )
+                                # fluidRow(column(
+                                #   withSpinner(plotlyOutput("plot2"))
+                                # ),
+                                # column(withSpinner(DT::dataTableOutput("markertags1")))
+                                # ) #end of fluid Row
+                                
+                              )#end of mainpanel
+                              )#end of sidebar layout
+                              ), #end of marker tag tab
+                     tabPanel("Release and Recap Length/Weights",
+                              fluidRow(
+                                column(
+                                  width = 8,
+                                  withSpinner(plotlyOutput("plot3"))
+                                              ),#end of column
+                                column(
+                                  width = 4,
+                                  withSpinner(plotlyOutput("plot4"))
+                                  
+                                )#end of column
+                                       )#end of fluidrow
+                              ) #end of tabPanel
+                   )#end of tabset Panel 
+                   ) # end of tabPanel
+          
 
          
 
     ) #end of navbar page
 ) #end of fluidpage
+
 
 
 # Define server logic
@@ -656,6 +723,22 @@ server <- function(input, output, session) {
       return(movements_data1)
     }) 
 
+
+# QAQC Reactives ----------------------------------------------------------
+    filtered_markertag_data <- eventReactive(input$button8,{
+      #pickers8 ad 9
+      
+      
+        markertag_data1 <- df_list$Marker_Tag_data %>%
+          filter(SCD %in% c(input$picker8),
+                 TAG %in% c(input$picker9),
+                 DTY >= input$slider2[1] & DTY <= input$slider2[2]
+              )
+      
+      
+      return(markertag_data1)
+    }) 
+    
       
 
 # Datatable renders -------------------------------------------------------
@@ -851,6 +934,24 @@ server <- function(input, output, session) {
       
     })
     
+    
+
+# MarkerTag datatable Render ----------------------------------------------
+    output$markertags1 <- renderDT({
+      datatable(filtered_markertag_data(),
+                rownames = FALSE,
+                selection = "single",
+                filter = 'top',
+                options = list(
+                  #statesave is restore table state on page reload
+                  stateSave =TRUE,
+                  pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
+                  dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
+                  language = list(emptyTable = "Enter inputs and press Render Table")
+                )
+      ) 
+    })
+    
 # Map proxy for Icons -----------------------------------------------------
     
     
@@ -971,6 +1072,49 @@ server <- function(input, output, session) {
     })    
 
  
+    
+
+# MarkerTag Plot Output ---------------------------------------------------
+
+    output$plot2 <- renderPlotly({
+      plot2 <- filtered_markertag_data() %>%
+        ggplot(aes(x = DTY, y = CleanARR, color = SCD, text = paste(TAG) )) +
+        geom_point() +
+        theme_classic() +
+        theme(
+          axis.text.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks = element_blank())
+      
+      
+      plotly2 <- ggplotly(p = plot2)
+      plotly2
+    })    
+    
+
+# Release and Recap Data L/W Plot Output --------------------------------------------
+    output$plot3 <- renderPlotly({
+      plot3 <- Release %>%
+        ggplot(aes(x = Length, y = Weight, color = Species)) +
+        geom_point() + 
+        theme_classic() +
+        labs(title = "Length/Weight Plot for Release Data")
+      
+      plotly3 <- ggplotly(plot3) 
+      plotly3
+    })    
+    
+    output$plot4 <- renderPlotly({
+      plot4 <- Recaptures %>%
+        ggplot(aes(x = Length, y = Weight, color = Species)) +
+        geom_point() + 
+        theme_classic() +
+        labs(title = "Length/Weight Plot for Recapture Data")
+      
+      plotly4 <- ggplotly(plot4) 
+      plotly4
+    })    
+    
 # Download Handlers -------------------------------------------------------
 
     

@@ -4,6 +4,7 @@ library(tidyverse) #error has occ
 library(lubridate)
 library(leaflet)
 library(PBSmapping)
+library(plotly) #for turning maps to plotly
 library(DT)
 library(shinyWidgets) # for pickerinput
 library(shinythemes)
@@ -55,8 +56,8 @@ combined_events_stations <- combine_events_and_stations(All_events, Stationdata1
 
 Movements_df <- get_movements_function(combined_events_stations)
 
-Mx <- Movements_df %>%
-  filter(is.na(marker_color))
+# Mx <- Movements_df %>%
+#   filter(is.na(marker_color))
 
 
 
@@ -321,12 +322,15 @@ ui <- fluidPage(
                                       ),
         
                             
-                                      actionButton("button7", label = "Render Map and Data")
+                                      actionButton("button7", label = "Render Map and Data"), 
+                                      hr(),
+                                      plotlyOutput("plot1")
                                       
 
                        ),#end of sidebar panel
                        mainPanel(
-                                  withSpinner(leafletOutput("map1",height=700)), #forgot to do LeafletOutput so the map wasn't showing up
+                                  withSpinner(leafletOutput("map1",height=600)), #forgot to do LeafletOutput so the map wasn't showing up
+                                  hr(),
                                   withSpinner(DT::dataTableOutput("movements1"))
             
             
@@ -847,9 +851,6 @@ server <- function(input, output, session) {
       
     })
     
-    
-    #input$_rows_selected
-    
 # Map proxy for Icons -----------------------------------------------------
     
     
@@ -895,48 +896,6 @@ server <- function(input, output, session) {
           lat=row_selected$Y,
           icon = my_icon)
       
-      # if(is.null(row_selected1()))
-      # {
-      #   
-      #   # prev_icon <- makeAwesomeIcon(icon = 'ios-close',
-      #   #                              library = 'ion',
-      #   #                              markerColor = prev_row()$marker_color,
-      #   #                              iconColor =prev_row()$icon_color)
-      #   #print(as.character(prev_row()$id))
-      #   proxy %>%
-      #     clearGroup(group = "markers")
-      #   #removeMarker(layerId = as.character(prev_row()$id))
-      #   
-      #   # clearGroup(group_name) %>%
-      #   #removeMarker(layerId = as.character(prev_row()$id))
-      #   #when there has been a marker clicked before, add a marker that looks the same as the old one.
-      #   #markers made with proxy doesn't integrate with original marker mapping
-      #   #need to find a way to actually remove the previous markers made with proxy
-      #   # addAwesomeMarkers(
-      #   #   #group = group_name,
-      #   #
-      #   #   clusterOptions = markerClusterOptions(),
-      #   #   icon = prev_icon,
-      #   #   label = paste(prev_row()$movement_only, "\n",
-      #   #                 prev_row()$Date),
-      #   #   popup=paste(
-      #   #     "TAG:", prev_row()$TAG, "<br>",
-      #   #     "Release Site:", prev_row()$ReleaseSite, "<br>",
-      #   #     "Detection Event:", prev_row()$det_type, "<br>",
-      #   #     "Date:", prev_row()$Datetime),
-      #   #   layerId = as.character(prev_row()$id),
-      #   #   lng=prev_row()$X,
-      #   #   lat=prev_row()$Y)
-      # }
-      # 
-      # 
-      # row_selected1(row_selected)
-      
-      # Reset previously selected marker
-      #says if there is a row that was selected before, go back to using the normal icons
-      
-      #prev_icon <- makeAwesomeIcon(icon = 'ios-close', markerColor = prev_row()$marker_color, prev_row()$icon_color)
-
      
      })
     
@@ -972,8 +931,10 @@ server <- function(input, output, session) {
       
     })
     
-    #when map is clicked, go to that icon
-    # pagination doesn't work right now
+    #when map is clicked, go to that icon in the dataTable
+    # pagination wasn't working bc ID being assigned was different than row number; 
+    #so when a icon was clicked, it was selecting the right row, but the row number was different than Id so it was going to the wrong page
+    #fixed by assigning a new Id column evyertime the data is filtered; might be a more efficient way to do this but idk/idc
     observeEvent(input$map1_marker_click, {
       #need to assign layer ID's in leafletrender to have an id associated with the click
       #clicking the map gives info in the form of a list, including the layer id assigned in leaflet
@@ -986,6 +947,28 @@ server <- function(input, output, session) {
         selectRows(which(filtered_movements_data()$id == clickId)) %>%
         selectPage(which(input$movements1_rows_all == clickId) %/% input$movements1_state$length + 1)
     })
+    
+
+# Movement Plot Output ----------------------------------------------------
+
+    output$plot1 <- renderPlotly({
+      plot <- filtered_movements_data() %>%
+        ggplot(aes(x = Date, fill = movement_only,
+                   text = paste('Date: ', as.character(Date), '\n'))
+        ) +
+        geom_bar(stat = "count", position = "dodge") +
+        theme_classic() +
+        labs(title="Fish Movement by Day",
+             x ="Date", y = "Count") +
+        scale_fill_manual(values = c("Downstream Movement" = "red",
+                                     "Upstream Movement" = "chartreuse3",
+                                     "No Movement" = "black",
+                                     "Initial Release" = "darkorange"))
+      
+      
+      plotly1 <- ggplotly(p = plot)
+      plotly1
+    })    
 
  
 # Download Handlers -------------------------------------------------------

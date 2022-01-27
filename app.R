@@ -858,6 +858,7 @@ server <- function(input, output, session) {
     })
     
     #group_name <- "my_additons"
+    #230000228991
     
     observeEvent(input$movements1_rows_selected, {
       row_selected = filtered_movements_data()[input$movements1_rows_selected,]
@@ -866,11 +867,12 @@ server <- function(input, output, session) {
       print(row_selected)
       
       proxy %>%
-        #clearGroup(group_name) %>%
-        
+        #clearing the group removes previous marker from previuous row before making a new one
+        clearGroup(group = "markers") %>%
+      
         addAwesomeMarkers(
           clusterOptions = markerClusterOptions(),
-          #group = group_name,
+          group = "markers",
           popup = paste(
             "TAG:", row_selected$TAG, "<br>",
             "Release Site:", row_selected$ReleaseSite, "<br>",
@@ -887,36 +889,42 @@ server <- function(input, output, session) {
       
       #prev_icon <- makeAwesomeIcon(icon = 'ios-close', markerColor = prev_row()$marker_color, prev_row()$icon_color)
 
-      if(!is.null(prev_row()))
-      {
-        
-        prev_icon <- makeAwesomeIcon(icon = 'ios-close',
-                                     library = 'ion',
-                                     markerColor = prev_row()$marker_color,
-                                     iconColor =prev_row()$icon_color)
-        
-        proxy %>%
-         # clearGroup(group_name) %>%
-          
-          addAwesomeMarkers(
-            #group = group_name,
-            
-            clusterOptions = markerClusterOptions(),
-            icon = prev_icon,
-            label = paste(prev_row()$movement_only, "\n",
-                          prev_row()$Date),
-            popup=paste(
-              "TAG:", prev_row()$TAG, "<br>",
-              "Release Site:", prev_row()$ReleaseSite, "<br>",
-              "Detection Event:", prev_row()$det_type, "<br>",
-              "Date:", prev_row()$Datetime),
-            layerId = as.character(prev_row()$id),
-            lng=prev_row()$X,
-            lat=prev_row()$Y)
-      }
-      # set new value to reactiveVal
-      prev_row(row_selected)
-    })        
+    #   if(!is.null(prev_row()))
+    #   {
+    #     
+    #     # prev_icon <- makeAwesomeIcon(icon = 'ios-close',
+    #     #                              library = 'ion',
+    #     #                              markerColor = prev_row()$marker_color,
+    #     #                              iconColor =prev_row()$icon_color)
+    #     print(as.character(prev_row()$id))
+    #     # proxy %>%
+    #     #   clearGroup(group = "markers")
+    #       #removeMarker(layerId = as.character(prev_row()$id))
+    #     
+    #      # clearGroup(group_name) %>%
+    #       #removeMarker(layerId = as.character(prev_row()$id))
+    #       #when there has been a marker clicked before, add a marker that looks the same as the old one. 
+    #       #markers made with proxy doesn't integrate with original marker mapping
+    #       #need to find a way to actually remove the previous markers made with proxy
+    #       # addAwesomeMarkers(
+    #       #   #group = group_name,
+    #       # 
+    #       #   clusterOptions = markerClusterOptions(),
+    #       #   icon = prev_icon,
+    #       #   label = paste(prev_row()$movement_only, "\n",
+    #       #                 prev_row()$Date),
+    #       #   popup=paste(
+    #       #     "TAG:", prev_row()$TAG, "<br>",
+    #       #     "Release Site:", prev_row()$ReleaseSite, "<br>",
+    #       #     "Detection Event:", prev_row()$det_type, "<br>",
+    #       #     "Date:", prev_row()$Datetime),
+    #       #   layerId = as.character(prev_row()$id),
+    #       #   lng=prev_row()$X,
+    #       #   lat=prev_row()$Y)
+    #   }
+    #   # set new value to reactiveVal
+    #   prev_row(row_selected)
+     })        
     
     
   
@@ -951,14 +959,15 @@ server <- function(input, output, session) {
     })
     
     #when map is clicked, go to that icon
-    
-    # observeEvent(input$map1_marker_click, {
-    #   clickId <- input$map1_marker_click$id
-    #   dataTableProxy("movements1") %>%
-    #     selectRows(which(filtered_movements_data()$id == clickId)) %>%
-    #     selectPage(which(input$movements1_rows_all == clickId) %/% input$movements1_state$length + 1)
-    # })
-    # 
+    # pagination doesn't work right now
+    observeEvent(input$map1_marker_click, {
+      clickId <- input$map1_marker_click$id
+      print(clickId)
+      dataTableProxy("movements1") %>%
+        selectRows(which(filtered_movements_data()$id == clickId)) %>%
+        selectPage(which(input$movements1_rows_all == clickId) %/% input$movements1_state$length + 1)
+    })
+
  
 # Download Handlers -------------------------------------------------------
 

@@ -1943,3 +1943,6 @@ oregon_rfid <- new_pit(data = "oregon_rfid", test_tags = NULL, print_to_file = F
 x <- r2 %>%
   group_by(State) %>%
   tally()
+
+qDat <- quakes
+qDat$id <- seq.int(nrow(qDat))

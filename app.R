@@ -280,6 +280,7 @@ ui <- fluidPage(
 #the filtering also automatically takes out NA values on movement with picker6; but all the NA movement onlys should be from fish where we have no release info for,
 #and also from fish that have detections before their offical "release" back in May
 #if marker_color or icon_color is NA, it wont get mapped or displayed in data
+#picker wasn't wokring becuase I had 2 differnt pick
             tabPanel("Daily Movements Map and Data",
                      sidebarLayout(
                        sidebarPanel(
@@ -295,16 +296,16 @@ ui <- fluidPage(
         
         
                                       ), #end of picker 6 input
-                                      radioButtons(inputId = "radiobuttons1",
-                                                   label = "Select Data Frequency",
-                                                   choices = c("days", "weeks"),
-                                                   selected = "days",
-                                                   inline = TRUE
-                                      ),
+                                      # radioButtons(inputId = "radiobuttons1",
+                                      #              label = "Select Data Frequency",
+                                      #              choices = c("days", "weeks"),
+                                      #              selected = "days",
+                                      #              inline = TRUE
+                                      # ),
                                       sliderInput("slider1", "Date",
-                                                  min = min(df_list$All_Events$Date),
-                                                  max = max(df_list$All_Events$Date), 
-                                                  value = min(df_list$All_Events$Date),
+                                                  min = min(df_list$All_Events$Date -1),
+                                                  max = max(df_list$All_Events$Date +1),  
+                                                  value = c(min(df_list$All_Events$Date -1),max(df_list$All_Events$Date +1)),
                                                   step = 1,
                                                   timeFormat = "%d %b %y",
                                                   animate = animationOptions(interval = 500, loop = FALSE)
@@ -620,6 +621,7 @@ server <- function(input, output, session) {
       if(input$textinput3 != ''){
         movements_data1 <- Movements_df %>%
           filter(TAG %in% c(input$textinput3),
+                 Date >= input$slider1[1] & Date <= input$slider1[2],
                  #Date == input$slider1,
                  movement_only %in% c(input$picker6)
                  # daily_unique_events %in% input$picker4,
@@ -628,8 +630,8 @@ server <- function(input, output, session) {
       } else {
         movements_data1 <- Movements_df  %>% #initial_states_data_list()$Movements
           filter(
-            #Date == input$slider1,
-              movement_only %in% c(input$picker6)
+            Date >= input$slider1[1] & Date <= input$slider1[2],
+            movement_only %in% c(input$picker6)
             # daily_unique_events %in% input$picker4,
             # State %in% input$picker5
           )
@@ -818,9 +820,11 @@ server <- function(input, output, session) {
       
       datatable(filtered_movements_data(),
                 rownames = FALSE,
-                
+                selection = "single",
                 filter = 'top',
                 options = list(
+                  #statesave is restore table state on page reload
+                  stateSave =TRUE,
                   pageLength = 10, info = TRUE, lengthMenu = list(c(10,25, 50, 100, 200), c("10", "25", "50","100","200")),
                   dom = 'Blfrtip', #had to add 'lowercase L' letter to display the page length again
                   language = list(emptyTable = "Enter inputs and press Render Table")
@@ -832,6 +836,91 @@ server <- function(input, output, session) {
       
     })
     
+    
+    #input$_rows_selected
+    
+# Map proxy for Icons -----------------------------------------------------
+    
+    
+    # to keep track of previously selected row
+    #setting to nothing for now
+    prev_row <- reactiveVal()
+    #this is what the new icon looks like
+    my_icon = makeAwesomeIcon(icon = 'flag', markerColor = 'lightblue', iconColor = 'red')
+    
+    icons <- reactive({
+        awesomeIcons(
+          icon = 'ios-close',
+          iconColor = filtered_movements_data()$icon_color,
+          library = 'ion',
+          markerColor = filtered_movements_data()$marker_color
+        )
+    })
+    
+    #group_name <- "my_additons"
+    
+    observeEvent(input$movements1_rows_selected, {
+      row_selected = filtered_movements_data()[input$movements1_rows_selected,]
+      
+      proxy <- leafletProxy('map1')
+      print(row_selected)
+      
+      proxy %>%
+        #clearGroup(group_name) %>%
+        
+        addAwesomeMarkers(
+          clusterOptions = markerClusterOptions(),
+          #group = group_name,
+          popup = paste(
+            "TAG:", row_selected$TAG, "<br>",
+            "Release Site:", row_selected$ReleaseSite, "<br>",
+            "Detection Event:", row_selected$det_type, "<br>",
+            "Date:", row_selected$Datetime),
+          
+          layerId = as.character(row_selected$id),
+          lng=row_selected$X, 
+          lat=row_selected$Y,
+          icon = my_icon)
+      
+      # Reset previously selected marker
+      #says if there is a row that was selected before, go back to using the normal icons
+      
+      #prev_icon <- makeAwesomeIcon(icon = 'ios-close', markerColor = prev_row()$marker_color, prev_row()$icon_color)
+
+      if(!is.null(prev_row()))
+      {
+        
+        prev_icon <- makeAwesomeIcon(icon = 'ios-close',
+                                     library = 'ion',
+                                     markerColor = prev_row()$marker_color,
+                                     iconColor =prev_row()$icon_color)
+        
+        proxy %>%
+         # clearGroup(group_name) %>%
+          
+          addAwesomeMarkers(
+            #group = group_name,
+            
+            clusterOptions = markerClusterOptions(),
+            icon = prev_icon,
+            label = paste(prev_row()$movement_only, "\n",
+                          prev_row()$Date),
+            popup=paste(
+              "TAG:", prev_row()$TAG, "<br>",
+              "Release Site:", prev_row()$ReleaseSite, "<br>",
+              "Detection Event:", prev_row()$det_type, "<br>",
+              "Date:", prev_row()$Datetime),
+            layerId = as.character(prev_row()$id),
+            lng=prev_row()$X,
+            lat=prev_row()$Y)
+      }
+      # set new value to reactiveVal
+      prev_row(row_selected)
+    })        
+    
+    
+  
+    
 
 # Movements Map Output ----------------------------------------------------
 
@@ -840,33 +929,37 @@ server <- function(input, output, session) {
       
       
       
-      icons <- awesomeIcons(
-        icon = 'ios-close',
-        iconColor = filtered_movements_data()$icon_color,
-        library = 'ion',
-        markerColor = filtered_movements_data()$marker_color
-      )
-      
-      
-      
-      
       leaflet(filtered_movements_data()) %>% #Warning: Error in UseMethod: no applicable method for 'metaData' applied to an object of class "NULL"  solved becuase leaflet() needs an arg leaflet(x)
         addProviderTiles(providers$Esri.WorldImagery,options = providerTileOptions()) %>%
+        
         addAwesomeMarkers(
+          #group = "original",
           clusterOptions = markerClusterOptions(),
-          lng=~X, lat = ~Y, icon = icons,
+          lng=~X, 
+          lat = ~Y,
+          icon = icons(),
           label = paste(filtered_movements_data()$movement_only, "\n",
                         filtered_movements_data()$Date),
+          #layerId = as.character(filtered_movements_data()$id),
           popup = paste(
             "TAG:", filtered_movements_data()$TAG, "<br>",
             "Release Site:", filtered_movements_data()$ReleaseSite, "<br>",
             "Detection Event:", filtered_movements_data()$det_type, "<br>",
-            "Date:", as.character(filtered_movements_data()$Datetime)))
+            "Date:", as.character(filtered_movements_data()$Datetime))
+          )
       
     })
     
+    #when map is clicked, go to that icon
     
-
+    # observeEvent(input$map1_marker_click, {
+    #   clickId <- input$map1_marker_click$id
+    #   dataTableProxy("movements1") %>%
+    #     selectRows(which(filtered_movements_data()$id == clickId)) %>%
+    #     selectPage(which(input$movements1_rows_all == clickId) %/% input$movements1_state$length + 1)
+    # })
+    # 
+ 
 # Download Handlers -------------------------------------------------------
 
     

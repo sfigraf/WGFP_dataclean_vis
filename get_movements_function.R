@@ -17,10 +17,13 @@ get_movements_function <- function(combined_events_stations) {
                                      dist_moved > 0 ~ "Upstream Movement",
                                      dist_moved < 0 ~ "Downstream Movement"),
            #this is for mapping later on
+           #MARKERCOLOR options: limited because markers rely on static image
+           #red", "darkred", "lightred", "orange", "beige", "green", "darkgreen", "lightgreen", "blue", "darkblue", "lightblue", "purple", "darkpurple", "pink", "cadetblue", "white", "gray", "lightgray", "black"
+           
            marker_color = case_when(movement_only == "No Movement" ~ "black",
                                     movement_only == "Upstream Movement" ~ "green",
                                     movement_only == "Downstream Movement" ~ "red",
-                                    movement_only == "Initial Release" ~ "blue"
+                                    movement_only == "Initial Release" ~ "orange"
                                     #str_detect(movement_only, "Initial Release (or recapture and release)") ~ "yellow"
                                     ),
            
@@ -41,10 +44,16 @@ get_movements_function <- function(combined_events_stations) {
   
   # need a column that has x and Y for this 
   movement_table_notrans <- convUL(movement_table_notrans, km=FALSE, southern=NULL)
+  #as of now, movement table still has rows reminiscent from first_last etc which are helpful when you want to know where it ended the day and stuff.
+  #but if you want to know concise movments, then this will eliminate uneeded rows
+  #example: 230000142723
   movement_table_notrans1 <- movement_table_notrans %>%
+    distinct(Date, TAG, det_type, movement_only, UTM_X, UTM_Y, .keep_all = TRUE) %>%
+    
     select(Date, Datetime, TAG, det_type, movement_only, dist_moved, ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, River, UTM_X, UTM_Y, X, Y, Event, sum_dist, marker_color, icon_color)
   
-  
+  #giving id column to make map proxy easier
+  movement_table_notrans1$id <- seq.int(nrow(movement_table_notrans1))
   
   end_time <- Sys.time()
   print(paste("Movements Function took", round(end_time-start_time,2)))

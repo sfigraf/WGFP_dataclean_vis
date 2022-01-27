@@ -196,6 +196,7 @@ ui <- fluidPage(
                           #submitButton("Update inputs", icon("sync"))
                           
                           actionButton("button3", label = "Render Table", width = "100%")
+                          
                         ), #end of sidebar 
                         mainPanel(tabsetPanel(
                           
@@ -293,9 +294,17 @@ ui <- fluidPage(
                                                   options = list(
                                                     `actions-box` = TRUE #this makes the "select/deselect all" option
                                                   )
-        
-        
                                       ), #end of picker 6 input
+                                      
+                                      pickerInput(inputId = "picker7",
+                                                  label = "Select Detection Type",
+                                                  choices = sort(unique(Movements_df$det_type)),
+                                                  selected = unique(Movements_df$det_type),
+                                                  multiple = TRUE,
+                                                  options = list(
+                                                    `actions-box` = TRUE #this makes the "select/deselect all" option
+                                                  )
+                                                  ), #end of picker 7 
                                       # radioButtons(inputId = "radiobuttons1",
                                       #              label = "Select Data Frequency",
                                       #              choices = c("days", "weeks"),
@@ -311,23 +320,14 @@ ui <- fluidPage(
                                                   animate = animationOptions(interval = 500, loop = FALSE)
                                       ),
         
-                                      # pickerInput(inputId = "picker7",
-                                      #             label = "States:",
-                                      #             choices = c(LETTERS[1:12]), #will need to be updated later on for uniqueness
-                                      #             selected = c(LETTERS[1:12]),
-                                      #             multiple = TRUE,
-                                      #             options = list(
-                                      #               `actions-box` = TRUE #this makes the "select/deselect all" option
-                                      #             )
-                                      #
-                                      #
-                                      # ), #end of picker 7 input
+                            
                                       actionButton("button7", label = "Render Map and Data")
+                                      
 
                        ),#end of sidebar panel
                        mainPanel(
                                   withSpinner(leafletOutput("map1",height=700)), #forgot to do LeafletOutput so the map wasn't showing up
-                                  withSpinner(DT::dataTableOutput("movements1")),
+                                  withSpinner(DT::dataTableOutput("movements1"))
             
             
                        )#end of mainPanel
@@ -623,18 +623,29 @@ server <- function(input, output, session) {
           filter(TAG %in% c(input$textinput3),
                  Date >= input$slider1[1] & Date <= input$slider1[2],
                  #Date == input$slider1,
-                 movement_only %in% c(input$picker6)
+                 movement_only %in% c(input$picker6),
+                 det_type %in% c(input$picker7)
+                 
                  # daily_unique_events %in% input$picker4,
                  # State %in% input$picker5
-          )
+          ) %>%
+          arrange(Datetime)
+        
+        movements_data1$id <- seq.int(nrow(movements_data1))
+        
       } else {
         movements_data1 <- Movements_df  %>% #initial_states_data_list()$Movements
           filter(
             Date >= input$slider1[1] & Date <= input$slider1[2],
-            movement_only %in% c(input$picker6)
+            movement_only %in% c(input$picker6),
+            det_type %in% c(input$picker7)
+            
             # daily_unique_events %in% input$picker4,
             # State %in% input$picker5
-          )
+          ) %>%
+          arrange(Datetime)
+        movements_data1$id <- seq.int(nrow(movements_data1))
+        
       }
       
       
@@ -844,8 +855,8 @@ server <- function(input, output, session) {
     
     # to keep track of previously selected row
     #setting to nothing for now
-    prev_row <- reactiveVal()
-    #this is what the new icon looks like
+    row_selected1 <- reactiveVal()
+    #this is what the new icon for selected rows looks like
     my_icon = makeAwesomeIcon(icon = 'flag', markerColor = 'lightblue', iconColor = 'red')
     
     icons <- reactive({
@@ -864,8 +875,8 @@ server <- function(input, output, session) {
       row_selected = filtered_movements_data()[input$movements1_rows_selected,]
       
       proxy <- leafletProxy('map1')
-      print(row_selected)
-      
+      #print(row_selected)
+      #print(input$movements1_rows_selected)
       proxy %>%
         #clearing the group removes previous marker from previuous row before making a new one
         clearGroup(group = "markers") %>%
@@ -884,47 +895,50 @@ server <- function(input, output, session) {
           lat=row_selected$Y,
           icon = my_icon)
       
+      # if(is.null(row_selected1()))
+      # {
+      #   
+      #   # prev_icon <- makeAwesomeIcon(icon = 'ios-close',
+      #   #                              library = 'ion',
+      #   #                              markerColor = prev_row()$marker_color,
+      #   #                              iconColor =prev_row()$icon_color)
+      #   #print(as.character(prev_row()$id))
+      #   proxy %>%
+      #     clearGroup(group = "markers")
+      #   #removeMarker(layerId = as.character(prev_row()$id))
+      #   
+      #   # clearGroup(group_name) %>%
+      #   #removeMarker(layerId = as.character(prev_row()$id))
+      #   #when there has been a marker clicked before, add a marker that looks the same as the old one.
+      #   #markers made with proxy doesn't integrate with original marker mapping
+      #   #need to find a way to actually remove the previous markers made with proxy
+      #   # addAwesomeMarkers(
+      #   #   #group = group_name,
+      #   #
+      #   #   clusterOptions = markerClusterOptions(),
+      #   #   icon = prev_icon,
+      #   #   label = paste(prev_row()$movement_only, "\n",
+      #   #                 prev_row()$Date),
+      #   #   popup=paste(
+      #   #     "TAG:", prev_row()$TAG, "<br>",
+      #   #     "Release Site:", prev_row()$ReleaseSite, "<br>",
+      #   #     "Detection Event:", prev_row()$det_type, "<br>",
+      #   #     "Date:", prev_row()$Datetime),
+      #   #   layerId = as.character(prev_row()$id),
+      #   #   lng=prev_row()$X,
+      #   #   lat=prev_row()$Y)
+      # }
+      # 
+      # 
+      # row_selected1(row_selected)
+      
       # Reset previously selected marker
       #says if there is a row that was selected before, go back to using the normal icons
       
       #prev_icon <- makeAwesomeIcon(icon = 'ios-close', markerColor = prev_row()$marker_color, prev_row()$icon_color)
 
-    #   if(!is.null(prev_row()))
-    #   {
-    #     
-    #     # prev_icon <- makeAwesomeIcon(icon = 'ios-close',
-    #     #                              library = 'ion',
-    #     #                              markerColor = prev_row()$marker_color,
-    #     #                              iconColor =prev_row()$icon_color)
-    #     print(as.character(prev_row()$id))
-    #     # proxy %>%
-    #     #   clearGroup(group = "markers")
-    #       #removeMarker(layerId = as.character(prev_row()$id))
-    #     
-    #      # clearGroup(group_name) %>%
-    #       #removeMarker(layerId = as.character(prev_row()$id))
-    #       #when there has been a marker clicked before, add a marker that looks the same as the old one. 
-    #       #markers made with proxy doesn't integrate with original marker mapping
-    #       #need to find a way to actually remove the previous markers made with proxy
-    #       # addAwesomeMarkers(
-    #       #   #group = group_name,
-    #       # 
-    #       #   clusterOptions = markerClusterOptions(),
-    #       #   icon = prev_icon,
-    #       #   label = paste(prev_row()$movement_only, "\n",
-    #       #                 prev_row()$Date),
-    #       #   popup=paste(
-    #       #     "TAG:", prev_row()$TAG, "<br>",
-    #       #     "Release Site:", prev_row()$ReleaseSite, "<br>",
-    #       #     "Detection Event:", prev_row()$det_type, "<br>",
-    #       #     "Date:", prev_row()$Datetime),
-    #       #   layerId = as.character(prev_row()$id),
-    #       #   lng=prev_row()$X,
-    #       #   lat=prev_row()$Y)
-    #   }
-    #   # set new value to reactiveVal
-    #   prev_row(row_selected)
-     })        
+     
+     })
     
     
   
@@ -948,7 +962,7 @@ server <- function(input, output, session) {
           icon = icons(),
           label = paste(filtered_movements_data()$movement_only, "\n",
                         filtered_movements_data()$Date),
-          #layerId = as.character(filtered_movements_data()$id),
+          layerId = as.character(filtered_movements_data()$id),
           popup = paste(
             "TAG:", filtered_movements_data()$TAG, "<br>",
             "Release Site:", filtered_movements_data()$ReleaseSite, "<br>",
@@ -961,8 +975,13 @@ server <- function(input, output, session) {
     #when map is clicked, go to that icon
     # pagination doesn't work right now
     observeEvent(input$map1_marker_click, {
+      #need to assign layer ID's in leafletrender to have an id associated with the click
+      #clicking the map gives info in the form of a list, including the layer id assigned in leaflet
       clickId <- input$map1_marker_click$id
-      print(clickId)
+      #print(clickId)
+      #print(input$movements1_state$length)
+      print(which(filtered_movements_data()$id == clickId))
+      #saying get the rows in the data with the same id as clickId; clickId is the row number
       dataTableProxy("movements1") %>%
         selectRows(which(filtered_movements_data()$id == clickId)) %>%
         selectPage(which(input$movements1_rows_all == clickId) %/% input$movements1_state$length + 1)

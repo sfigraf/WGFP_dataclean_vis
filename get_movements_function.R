@@ -53,7 +53,7 @@ get_movements_function <- function(combined_events_stations) {
     select(Date, Datetime, TAG, det_type, movement_only, dist_moved, ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, River, UTM_X, UTM_Y, X, Y, Event, sum_dist, marker_color, icon_color)
   
   #giving id column to make map proxy easier
-  movement_table_notrans1$id <- seq.int(nrow(movement_table_notrans1))
+  #movement_table_notrans1$id <- seq.int(nrow(movement_table_notrans1))
   
   end_time <- Sys.time()
   print(paste("Movements Function took", round(end_time-start_time,2)))

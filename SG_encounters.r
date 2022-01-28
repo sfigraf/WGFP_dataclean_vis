@@ -1985,3 +1985,24 @@ plot3 <- Release %>%
   labs(title = "Length/Weight Plot for Release Data")
 
 ggplotly(plot3)
+
+
+hms::hms((min(All_events$Time)))
+x <- All_events %>%
+  mutate(Time1 =
+           #strptime(str_trim(Time), format = "%H:%M:%S"),
+           hour(Datetime),
+           #hms::hms(as.numeric(str_trim(Time)))
+         #Time2 = as.POSIXct(Time1)
+         ) %>%
+  group_by(Date, TAG) %>% 
+  mutate(first_last = case_when(Datetime == min(Datetime) ~ "First_of_day",
+                                Datetime == max(Datetime) ~ "Last_of_day",
+                                Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0")
+  ) %>%
+  ungroup() %>%
+  distinct(TAG, Event, Date, first_last,  UTM_X, UTM_Y, .keep_all = TRUE) %>%
+  select(-first_last) 
+  #filter(hour(Datetime) >= " 12:01:00" & Time <= " 23:59:59")
+max(x$Time1)
+#library(data.table)

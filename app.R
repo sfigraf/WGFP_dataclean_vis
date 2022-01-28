@@ -61,7 +61,8 @@ Movements_df <- get_movements_function(combined_events_stations)
 
 
 
-#statesdf_list <- Get_states_function(All_events, Stationdata1)
+
+#statesdf_list <- Get_states_function(combined_events_stations)
 
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
@@ -153,6 +154,15 @@ ui <- fluidPage(
                           dateRangeInput("drangeinput2", "Select a Date Range:",
                                          start = "2020-08-01", 
                                          end = max(df_list$All_Events$Date) + 1), #end of date range input
+                          
+                          sliderInput("slider1", "Hour of Day",
+                                      min = min(hour(All_events$Datetime)),
+                                      max = max(hour(All_events$Datetime)),  
+                                      value = c(min(hour(All_events$Datetime)),max(hour(All_events$Datetime))),
+                                      step = 1,
+                                      #timeFormat = "%T",
+                                      #animate = animationOptions(interval = 500, loop = FALSE)
+                          ),
                           pickerInput(inputId = "picker1",
                                       label = "Select Event",
                                       choices = unique(df_list$All_Events$Event),
@@ -225,7 +235,7 @@ ui <- fluidPage(
 # States UI -----------------------------------------------------
 
 
-            tabPanel("Daily States and Movements",
+            tabPanel("Daily States",
                      sidebarLayout(
                        sidebarPanel(
                          actionButton("button4", label = "Get States: Takes ~ 2 min", width = "100%",
@@ -264,8 +274,15 @@ ui <- fluidPage(
                        ),#end of sidebar panel
                        mainPanel(tabsetPanel(
                          tabPanel("States Dataframe",
+                                  hr(),
+                                  downloadButton(outputId = "download4", label = "Save this data as CSV"),
+                                  hr(),
                                   withSpinner(DT::dataTableOutput("states1"))),
                          tabPanel("States and Days Wide",
+                                  hr(),
+                                  downloadButton(outputId = "download5", label = "Save this data as CSV"),
+                                  hr(),
+                                  verbatimTextOutput("text1"),
                                   withSpinner(DT::dataTableOutput("states2"))),
                          
                          
@@ -285,7 +302,7 @@ ui <- fluidPage(
 #picker wasn't wokring becuase I had 2 differnt pick
             tabPanel("Daily Movements Map, Plot, and Data",
                      sidebarLayout(
-                       sidebarPanel(
+                       sidebarPanel(width = 2,
                                       textInput("textinput3", label = "Filter by TAG"),
                                       pickerInput(inputId = "picker6",
                                                   label = "Select Movement Type:",
@@ -312,7 +329,7 @@ ui <- fluidPage(
                                       #              selected = "days",
                                       #              inline = TRUE
                                       # ),
-                                      sliderInput("slider1", "Date",
+                                      sliderInput("slider2", "Date",
                                                   min = min(df_list$All_Events$Date -1),
                                                   max = max(df_list$All_Events$Date +1),  
                                                   value = c(min(df_list$All_Events$Date -1),max(df_list$All_Events$Date +1)),
@@ -324,16 +341,24 @@ ui <- fluidPage(
                             
                                       actionButton("button7", label = "Render Map and Data"), 
                                       hr(),
-                                      plotlyOutput("plot1")
+                                    #plotlyOutput("plot1")
                                       
 
                        ),#end of sidebar panel
-                       mainPanel(
-                                  withSpinner(leafletOutput("map1",height=600)), #forgot to do LeafletOutput so the map wasn't showing up
-                                  hr(),
-                                  withSpinner(DT::dataTableOutput("movements1"))
-            
-            
+                       mainPanel(width = 10,
+                         splitLayout(cellWidths = c("40%", "60%"),
+                                     
+                                     withSpinner(DT::dataTableOutput("movements1")),
+                                                 withSpinner(leafletOutput("map1", height = 600))
+                         ), #end of splitLayout
+                         hr(),
+                         downloadButton(outputId = "download6", label = "Save movements data as CSV"),
+                         hr(),
+                         plotlyOutput("plot1")
+                         # withSpinner(leafletOutput("map1",height=600)),
+                         # withSpinner(DT::dataTableOutput("movements1"))
+                         
+                         
                        )#end of mainPanel
                      )#end of sidebarLayout including sidebarPanel and Mainpanel
             
@@ -364,7 +389,7 @@ ui <- fluidPage(
                                                 `actions-box` = TRUE #this makes the "select/deselect all" option
                                               )
                                   ), #end of picker 9 
-                              sliderInput("slider2", "Date",
+                              sliderInput("slider3", "Date",
                                           min = min(df_list$Marker_Tag_data$DTY -1),
                                           max = max(df_list$Marker_Tag_data$DTY +1),  
                                           value = c(min(df_list$Marker_Tag_data$DTY -1),max(df_list$Marker_Tag_data$DTY +1)),
@@ -376,16 +401,14 @@ ui <- fluidPage(
                                 ), #end of sidebar panel
                               mainPanel(
                                 splitLayout(
+                                  
                                   withSpinner(DT::dataTableOutput("markertags1")),
                                   withSpinner(plotlyOutput("plot2"))
                                   
-                                )
-                                # fluidRow(column(
-                                #   withSpinner(plotlyOutput("plot2"))
-                                # ),
-                                # column(withSpinner(DT::dataTableOutput("markertags1")))
-                                # ) #end of fluid Row
-                                
+                                ),
+                                hr(),
+                                downloadButton(outputId = "download7", label = "Save this data as CSV"),
+                                hr(),
                               )#end of mainpanel
                               )#end of sidebar layout
                               ), #end of marker tag tab
@@ -472,14 +495,14 @@ server <- function(input, output, session) {
   #   # allDates <- unique(covidData$Date_reported)
   #   # eligibleDates <- allDates[xts::endpoints(allDates, on = input$frequency)]
   #   # 
-  #   if(input$slider1 == "weeks"){
+  #   if(input$slider2 == "weeks"){
   #     stepSize = 7
   #   }else{
   #     stepSize = 1
   #   }
   #   
   #   output$dateUI <- renderUI({
-  #     sliderInput("slider1", "Date",
+  #     sliderInput("slider2", "Date",
   #                 min = min(df_list$All_Events$Date),
   #                 max = max(df_list$All_Events$Date),
   #                 value = min(df_list$All_Events$Date),
@@ -544,11 +567,13 @@ server <- function(input, output, session) {
           filter(
 
             TAG %in% c(input$textinput1),
-            Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+            Date >= input$drangeinput2[1] & Date <= input$drangeinput2[2],
+            hour(Datetime) >= input$slider1[1] & hour(Datetime) <= input$slider1[2],
             Event %in% input$picker1,
             Species %in% input$picker2,
             ReleaseSite %in% input$picker3
-          )
+          ) %>%
+          arrange(Datetime)
         
         Enc_release_data_filtered <- Enc_release_data %>%
           filter(
@@ -560,7 +585,8 @@ server <- function(input, output, session) {
         all_events_filtered <- df_list$All_Events  %>%
           filter(
             
-            Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+            Date >= input$drangeinput2[1] & Date <= input$drangeinput2[2],
+            hour(Datetime) >= input$slider1[1] & hour(Datetime) <= input$slider1[2],
             Event %in% input$picker1,
             Species %in% input$picker2,
             ReleaseSite %in% input$picker3
@@ -585,7 +611,9 @@ server <- function(input, output, session) {
           
           filter(
             TAG == input$textinput1,
-            Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+            Date >= input$drangeinput2[1] & Date <= input$drangeinput2[2],
+            hour(Datetime) >= input$slider1[1] & hour(Datetime) <= input$slider1[2],
+            
                  Event %in% input$picker1,
                  Species %in% input$picker2,
                  ReleaseSite %in% input$picker3) %>%
@@ -608,7 +636,9 @@ server <- function(input, output, session) {
           all_events_filtered <- df_list$All_Events %>%
             
             filter(
-              Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+              Date >= input$drangeinput2[1] & Date <= input$drangeinput2[2],
+              hour(Datetime) >= input$slider1[1] & hour(Datetime) <= input$slider1[2],
+              
               Event %in% input$picker1,
               Species %in% input$picker2,
               ReleaseSite %in% input$picker3) %>%
@@ -633,7 +663,9 @@ server <- function(input, output, session) {
           all_events_filtered <- df_list$All_Events %>%
             filter(
               #TAG == input$textinput1,
-                    Datetime >= input$drangeinput2[1] & Datetime <= input$drangeinput2[2],
+                    Date >= input$drangeinput2[1] & Date <= input$drangeinput2[2],
+                    hour(Datetime) >= input$slider1[1] & hour(Datetime) <= input$slider1[2],
+                    
                    Event %in% input$picker1,
                    Species %in% input$picker2,
                    ReleaseSite %in% input$picker3) %>%
@@ -692,8 +724,8 @@ server <- function(input, output, session) {
       if(input$textinput3 != ''){
         movements_data1 <- Movements_df %>%
           filter(TAG %in% c(input$textinput3),
-                 Date >= input$slider1[1] & Date <= input$slider1[2],
-                 #Date == input$slider1,
+                 Date >= input$slider2[1] & Date <= input$slider2[2],
+                 #Date == input$slider2,
                  movement_only %in% c(input$picker6),
                  det_type %in% c(input$picker7)
                  
@@ -707,7 +739,7 @@ server <- function(input, output, session) {
       } else {
         movements_data1 <- Movements_df  %>% #initial_states_data_list()$Movements
           filter(
-            Date >= input$slider1[1] & Date <= input$slider1[2],
+            Date >= input$slider2[1] & Date <= input$slider2[2],
             movement_only %in% c(input$picker6),
             det_type %in% c(input$picker7)
             
@@ -732,7 +764,7 @@ server <- function(input, output, session) {
         markertag_data1 <- df_list$Marker_Tag_data %>%
           filter(SCD %in% c(input$picker8),
                  TAG %in% c(input$picker9),
-                 DTY >= input$slider2[1] & DTY <= input$slider2[2]
+                 DTY >= input$slider3[1] & DTY <= input$slider3[2]
               )
       
       
@@ -894,6 +926,10 @@ server <- function(input, output, session) {
       
     })
     
+    output$text1 <- renderPrint({
+      "Sidebar filters don't work on Wide Data"
+    })
+    
     output$states2 <- renderDT({
       
       
@@ -972,6 +1008,15 @@ server <- function(input, output, session) {
     
     #group_name <- "my_additons"
     #230000228991
+    
+    # get_data <- reactive({
+    #   event.data <- event_data("plotly_selected", source = "subset")
+    #   data <- data %>% mutate(show_id = FALSE)
+    #   if (!is.null(event.data)) {
+    #     data$show_id[event.data$pointNumber + 1] <- TRUE
+    #   }
+    #   data
+    # })
     
     observeEvent(input$movements1_rows_selected, {
       row_selected = filtered_movements_data()[input$movements1_rows_selected,]
@@ -1098,7 +1143,7 @@ server <- function(input, output, session) {
         ggplot(aes(x = Length, y = Weight, color = Species)) +
         geom_point() + 
         theme_classic() +
-        labs(title = "Length/Weight Plot for Release Data")
+        labs(title = "Release Data")
       
       plotly3 <- ggplotly(plot3) 
       plotly3
@@ -1109,7 +1154,7 @@ server <- function(input, output, session) {
         ggplot(aes(x = Length, y = Weight, color = Species)) +
         geom_point() + 
         theme_classic() +
-        labs(title = "Length/Weight Plot for Recapture Data")
+        labs(title = "Recapture Data")
       
       plotly4 <- ggplotly(plot4) 
       plotly4
@@ -1155,7 +1200,59 @@ server <- function(input, output, session) {
         
         
       }
-    ) #end of download2
+    ) #end of download3
+    
+    output$download4 <- downloadHandler(
+      filename = 
+        function() {
+          paste0("DailyStates_",most_recent_date,".csv")
+        }
+      ,
+      content = function(file) {
+        write_csv(filtered_states_data(), file)
+        
+        
+      }
+    ) #end of download4
+    
+    output$download5 <- downloadHandler(
+      filename = 
+        function() {
+          paste0("DatilyStates_Wide_",most_recent_date,".csv")
+        }
+      ,
+      content = function(file) {
+        write_csv(initial_states_data_list()$Days_and_states_wide, file)
+        
+        
+      }
+    ) #end of download5
+    
+    output$download6 <- downloadHandler(
+      filename = 
+        function() {
+          paste0("AllMovements_",most_recent_date,".csv")
+        }
+      ,
+      content = function(file) {
+        write_csv(filtered_movements_data(), file)
+        
+        
+      }
+    ) #end of download6
+    
+    output$download7 <- downloadHandler(
+      filename = 
+        function() {
+          paste0("MarkerTagsOnly_",most_recent_date,".csv")
+        }
+      ,
+      content = function(file) {
+        write_csv(filtered_markertag_data(), file)
+        
+        
+      }
+    ) #end of download7
 }
 
 # Run the application 

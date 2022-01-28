@@ -40,7 +40,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
                                  #if it doesn't detect PM or AM just do hms(ARR)
                                  str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR)),
            Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
-           CleanARR = str_sub(Scan_Time2, start = 11, end = -1)
+           CleanARR = str_trim(str_sub(Scan_Time2, start = 11, end = -1))
     ) %>%
     
     select(Code, DTY2, ARR, CleanARR, TRF, DUR, TTY, TAG, SCD, ANT, NCD, EFA) %>%
@@ -129,7 +129,7 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
                                     str_detect(Scan_Time, "PM|AM") == FALSE ~ hms(Scan_Time)),
       ) %>%
       mutate(Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
-             clean_time = str_sub(Scan_Time2, start = 11, end = -1)) %>%
+             clean_time = str_trim(str_sub(Scan_Time2, start = 11, end = -1))) %>%
       
       select(Scan_Date, clean_time, TAG, Site_Code, UTM_X, UTM_Y ) #%>%
       #rename(Scan_Time = (clean_time))

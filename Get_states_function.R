@@ -663,6 +663,8 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
   
   days_and_states_wide <- pivot_wider(days_and_states, id_cols = TAG, names_from = days_since, values_from = State)
   
+  days_and_states_wide <- days_and_states_wide %>%
+    select(TAG, `0`, 2:ncol(days_and_states_wide))
   states_df_list <- list("All_States" = states_final, "Unaccounted_Movements" = unknown_movements, "Days_and_states_wide" = days_and_states_wide)
   #this just tells how long the fucntion takes
   end_time <- Sys.time()
@@ -672,6 +674,12 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
 }
 
 
-#statesdf_list <- Get_states_function(combined_events_stations)
-# statesdf <- statesdf_list$All_States
+# #statesdf_list <- Get_states_function(combined_events_stations)
+
+
 #####################
+# statesdfwide1 <- statesdfwide[, c(5, 4, 1, 2, 3)]
+# 
+# statesdfwide <- statesdf_list$Days_and_states_wide
+# statesdfwide1 <- statesdfwide %>%
+#   select(TAG, `0`, 2:ncol(statesdfwide))

@@ -1989,12 +1989,12 @@ ggplotly(plot3)
 
 hms::hms((min(All_events$Time)))
 x <- All_events %>%
-  mutate(Time1 =
-           #strptime(str_trim(Time), format = "%H:%M:%S"),
-           hour(Datetime),
-           #hms::hms(as.numeric(str_trim(Time)))
-         #Time2 = as.POSIXct(Time1)
-         ) %>%
+  # mutate(Time1 =
+  #          #strptime(str_trim(Time), format = "%H:%M:%S"),
+  #          hour(Datetime),
+  #          #hms::hms(as.numeric(str_trim(Time)))
+  #        #Time2 = as.POSIXct(Time1)
+  #        ) %>%
   group_by(Date, TAG) %>% 
   mutate(first_last = case_when(Datetime == min(Datetime) ~ "First_of_day",
                                 Datetime == max(Datetime) ~ "Last_of_day",
@@ -2004,5 +2004,29 @@ x <- All_events %>%
   distinct(TAG, Event, Date, first_last,  UTM_X, UTM_Y, .keep_all = TRUE) %>%
   select(-first_last) 
   #filter(hour(Datetime) >= " 12:01:00" & Time <= " 23:59:59")
+
+
+
+allevents_2022_01_10 <- read_csv("allevents_2022-01-10.csv", 
+                                 col_types = cols(TAG = col_character(), 
+                                                  Time = col_character(),
+                                                  UTM_X = col_character(), UTM_Y = col_character()))
+#rows in A that don't have a match in b
+z2 <- anti_join(x,allevents_2022_01_10, by = "Datetime") # by = c("TAG", "Event", "Date", "UTM_X", "UTM_Y"))
+test <- left_join(z2, z1, by = c("Date", "TAG", "Event", "UTM_X", "UTM_Y"))
+test1 <- test %>%
+  select(Datetime.x, Datetime.y,Time.x, Time.y,  1:ncol(test))
 max(x$Time1)
 #library(data.table)
+
+x1 <- All_events %>%
+  ggplot(aes(x= Date, fill = Event, 
+             #text = TAG
+             )) +
+  geom_bar(stat = "count", position = "dodge") +
+  theme_classic() +
+  labs(title = "Raw Detections Frequency")
+  
+
+ggplotly(x1)
+

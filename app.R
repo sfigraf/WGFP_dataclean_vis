@@ -221,8 +221,12 @@ ui <- fluidPage(
                                    downloadButton(outputId = "download2", label = "Save this data as CSV"),
                                    hr(),
                                    withSpinner(DT::dataTableOutput("allevents1"))
-                                   ) #end of tabpanel
+                                   ), #end of tabpanel
                           
+                          tabPanel("All Events Plot",
+                                   
+                                   plotlyOutput("plot5")
+                          ) #end of tabpanel
                           
                           )#end of encounter histories tabset panel within mainPanel
                         )#end of mainPanel
@@ -470,6 +474,10 @@ server <- function(input, output, session) {
     
     updateCheckboxInput(session, "checkbox2",
                         value = NULL)
+    
+    updateSliderInput(session, "slider1", 
+                      value = c(min(hour(All_events$Datetime)),max(hour(All_events$Datetime)))
+    )
     
   }) #end of reset 
   
@@ -986,6 +994,24 @@ server <- function(input, output, session) {
                   language = list(emptyTable = "Enter inputs and press Render Table")
                 )
       ) 
+    })
+    
+
+# Enc Hist Plot Render ----------------------------------------------------
+
+    output$plot5 <- renderPlotly({
+      plot <- enc_hist_data_list()$allevents_data %>%
+        ggplot(aes(x= Date, fill = Event, 
+                   text = paste('Date: ', as.character(Date), '\n')
+        )) +
+        geom_bar(stat = "count", position = "dodge") +
+        theme_classic() +
+        labs(title = "Raw Detections Frequency")
+      
+      
+      plotly5 <- ggplotly(p = plot)
+      plotly5  
+      
     })
     
 # Map proxy for Icons -----------------------------------------------------

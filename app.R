@@ -327,6 +327,15 @@ ui <- fluidPage(
                                                     `actions-box` = TRUE #this makes the "select/deselect all" option
                                                   )
                                                   ), #end of picker 7 
+                                    pickerInput(inputId = "picker10",
+                                                label = "Select Species Type",
+                                                choices = sort(unique(Movements_df$Species)),
+                                                selected = unique(Movements_df$Species),
+                                                multiple = TRUE,
+                                                options = list(
+                                                  `actions-box` = TRUE #this makes the "select/deselect all" option
+                                                )
+                                    ), #end of picker 7 
                                       # radioButtons(inputId = "radiobuttons1",
                                       #              label = "Select Data Frequency",
                                       #              choices = c("days", "weeks"),
@@ -587,7 +596,7 @@ server <- function(input, output, session) {
           filter(
             TAG %in% c(input$textinput1),
             Species %in% input$picker2,
-            ReleaseSite %in% input$picker3)
+            ReleaseSite %in% input$picker3) 
         
       } else {
         all_events_filtered <- df_list$All_Events  %>%
@@ -598,7 +607,8 @@ server <- function(input, output, session) {
             Event %in% input$picker1,
             Species %in% input$picker2,
             ReleaseSite %in% input$picker3
-          )
+          )%>%
+          arrange(Datetime)
         
         Enc_release_data_filtered <- Enc_release_data %>%
           filter(
@@ -634,6 +644,7 @@ server <- function(input, output, session) {
           ungroup() %>%
           #need to include UTM_X and UTM_Y so that you can get multiple daily detections of mobile antennas in different locations
           distinct(TAG, Event, Date, first_last, UTM_X, UTM_Y, .keep_all = TRUE) %>%
+          arrange(Datetime) %>%
           select(-first_last)
         
         
@@ -659,6 +670,7 @@ server <- function(input, output, session) {
             ) %>%
             ungroup() %>%
             distinct(TAG, Event, Date, first_last,  UTM_X, UTM_Y, .keep_all = TRUE) %>%
+            arrange(Datetime) %>%
             select(-first_last) 
           
           
@@ -678,7 +690,8 @@ server <- function(input, output, session) {
                    Species %in% input$picker2,
                    ReleaseSite %in% input$picker3) %>%
             #need to have distinct() at the end of the expression
-            distinct(TAG, .keep_all = TRUE) 
+            distinct(TAG, .keep_all = TRUE) %>%
+            arrange(Datetime)
         }
 
         enc_hist_d_list <- list(
@@ -709,13 +722,15 @@ server <- function(input, output, session) {
           filter(TAG %in% c(input$textinput2),
                  daily_unique_events %in% input$picker4,
                  State %in% input$picker5
-                 )
+                 )%>%
+          arrange(Datetime)
       } else { 
         states_data1 <- initial_states_data_list()$All_States %>%
           filter(
             daily_unique_events %in% input$picker4,
             State %in% input$picker5
-          )      
+          )%>%
+          arrange(Datetime)      
         }
 
       
@@ -735,7 +750,8 @@ server <- function(input, output, session) {
                  Date >= input$slider2[1] & Date <= input$slider2[2],
                  #Date == input$slider2,
                  movement_only %in% c(input$picker6),
-                 det_type %in% c(input$picker7)
+                 det_type %in% c(input$picker7),
+                 Species %in% c(input$picker10)
                  
                  # daily_unique_events %in% input$picker4,
                  # State %in% input$picker5
@@ -749,7 +765,8 @@ server <- function(input, output, session) {
           filter(
             Date >= input$slider2[1] & Date <= input$slider2[2],
             movement_only %in% c(input$picker6),
-            det_type %in% c(input$picker7)
+            det_type %in% c(input$picker7),
+            Species %in% c(input$picker10)
             
             # daily_unique_events %in% input$picker4,
             # State %in% input$picker5

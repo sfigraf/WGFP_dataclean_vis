@@ -21,7 +21,7 @@ library(bslib)
 #stationary1 <- read.csv(paste0("WGFP_Raw_20211130.csv"))
 
 # if column names change in any of these read-ins, might require some modification to code to get them to combine
-Stationary <- read.csv(paste0("WGFP_Raw_20220110.csv")) #WGFP_Raw_20211130.csv WGFP_Raw_20220110_cf6.csv
+Stationary <- read.csv(paste0("WGFP_Raw_20220203.csv")) #WGFP_Raw_20211130.csv WGFP_Raw_20220110_cf6.csv
 Mobile <- read.csv("WGFP_Mobile_Detect_AllData.csv" , colClasses= c(rep("character",14), rep("numeric", 4), rep("character", 3)))
 Biomark <- read.csv("Biomark_Raw_20211109_1.csv", dec = ",")
 Release <- read.csv("WGFP_ReleaseData_Master.csv", na.strings = c(""," ","NA"), colClasses=c(rep("character",8), "numeric", "numeric",rep("character",8) ))
@@ -46,14 +46,19 @@ Recaptures_05 <- Recaptures %>%
 
 source("WGFP_EncounterHistoriesFunction.R")
 source("Combine_events_stations_function.R")
+source("enc_hist_wide_summary_function.R")
 source("get_movements_function.R")
 source("Get_states_function.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
 All_events <- df_list$All_Events
+recaps_and_detections <- df_list$Recaps_detections
 Marker_tags <- df_list$Marker_Tag_data
+
 combined_events_stations <- combine_events_and_stations(All_events, Stationdata1)
 
+enc_hist_wide_list <- enc_hist_wide_summary_function(recaps_and_detections, Release, combined_events_stations)
+enc_hist_wide_df <- enc_hist_wide_list$ENC_Release_wide_summary
 Movements_df <- get_movements_function(combined_events_stations)
 
 # Mx <- Movements_df %>%
@@ -67,7 +72,7 @@ Movements_df <- get_movements_function(combined_events_stations)
 WGFP_Clean_1 <- df_list$WGFP_Clean
 unknown_tags_1 <-df_list$Unknown_Tags
 
-Enc_release_data <- df_list$ENC_Release2 %>%
+Enc_release_data <- enc_hist_wide_df %>%
     mutate(Date = ifelse(str_detect(Date, "/"),
                          as.character(mdy(Date)),
                          Date))
@@ -104,6 +109,7 @@ ui <- fluidPage(
              # 
              tabPanel("About/How to Use",
                       includeHTML(paste0("www/", "WGFP_dataclean_vis_about.html"))
+                      
                       ), #end fo how to use TabPanel
              
 

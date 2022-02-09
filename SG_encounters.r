@@ -1722,19 +1722,146 @@ ggplotly(y)
 
 s <- read.csv("WGFP_Raw_20211130 - Copy (2).csv")
 s1 <- read.csv("WGFP_Raw_20210603.csv")
+
+### all events
 x <- All_events %>%
+  
   distinct(Date, Event, TAG, .keep_all = TRUE) %>%
-  #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
-  ggplot(aes(x = Date, y = Time, color = Event)) +
+  filter(
+    !Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")
+    #Event %in% c("RB2")
+    
+         ) %>%
+  ggplot(aes(x = Date, y = Time, color = Event, text = TAG)) +
   geom_point() +
   theme_classic() +
   theme(
     axis.text.y = element_blank(),
-        axis.ticks = element_blank())
+        axis.ticks = element_blank()) +
+  labs(title = "All Events Scaterplot")
+x
+ggplotly(x)
+
+### HOURS ONLY BAR PLOT
+
+#pretty sure when I use distinct(), it is keeping only the first detection of that day for that fish.
+#so if a fish sits on an antenna for a lot of the day, it's only going to show up during the first bit of the day? I think?
+x <- All_events %>%
+  #distinct(Date, Event, TAG, UTM_X, UTM_Y, .keep_all = TRUE) %>%
+  filter(
+    !Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")
+    #Event %in% c("RB2")
+
+  ) %>%
+  mutate(hour1 = hour(Datetime)) %>%
+  ggplot(aes(x = hour1, fill = Event)) +
+  geom_bar(stat = "Count") +
+  theme_classic() +
+  labs(title = "Hourly Events by Site")
+
+x
+ggplotly(x)
+
+####### STATIONARY 
+
+#before ARR is cleaned: 12 am comes up the same as 12 pm so there is a lot of detections in the 12 o clock range
+x <- Stationary %>%
+  distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
+  filter(
+    #!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")
+    #Event %in% c("RB2")
+    
+  ) %>%
+  ggplot(aes(x = DTY, y = ARR, color = SCD,  text = TAG)) +
+  geom_point() +
+  theme_classic() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()) +
+  labs(title = "Statoinary Only Scatterplot")
+x
+ggplotly(x)
+
+##after Arr is cleaned
+###after ARR is clean, if marker tags are still in stationary file and you use the distinct() function,
+# you'll get a lot of detections in the 0-15 min range because that's the only time that day a marker tag will show up in that dataframe
+cleanArr_Stationary <- Stationary %>%
+  mutate(Scan_Time1 = case_when(str_detect(ARR, "AM") & str_detect(ARR, "^12:") ~ hms(ARR) - hours(12),
+                                str_detect(ARR, "PM") & str_detect(ARR, "^12:") ~ hms(ARR),
+                                
+                                str_detect(ARR, "AM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR),
+                                str_detect(ARR, "PM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR) + hours(12),
+                                #if it doesn't detect PM or AM just do hms(ARR)
+                                str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR)),
+         Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
+         CleanARR = str_trim(str_sub(Scan_Time2, start = 11, end = -1)),
+         #hour = hour(CleanARR)
+  )
+
+###
+x <- cleanArr_Stationary %>%
+  #distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
+  filter(
+    #!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")
+    SCD %in% c("RB2")
+    
+  ) %>%
+  ggplot(aes(x = DTY, y = CleanARR, color = SCD,  text = TAG)) +
+  geom_point() +
+  theme_classic() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()) +
+  labs(title = "Statoinary Only Cleaned ARR scatterplot")
+x
+ggplotly(x)
+
+####STATIONAY NO MARKER TAGS
+## this should really be the key if ARR is behaving badly
+
+cleanArr_NOMarkers_Stationary <- Stationary %>%
+  mutate(Scan_Time1 = case_when(str_detect(ARR, "AM") & str_detect(ARR, "^12:") ~ hms(ARR) - hours(12),
+                                str_detect(ARR, "PM") & str_detect(ARR, "^12:") ~ hms(ARR),
+                                
+                                str_detect(ARR, "AM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR),
+                                str_detect(ARR, "PM") & str_detect(ARR, "^12:", negate = TRUE) ~ hms(ARR) + hours(12),
+                                #if it doesn't detect PM or AM just do hms(ARR)
+                                str_detect(ARR, "PM|AM") == FALSE ~ hms(ARR)),
+         Scan_Time2 = as.character(as_datetime(Scan_Time1)), 
+         CleanARR = str_trim(str_sub(Scan_Time2, start = 11, end = -1)),
+         
+  ) %>%
+  filter(str_detect(TAG, "^900"))
+
+x <- cleanArr_NOMarkers_Stationary %>%
+  distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
+  filter(
+    #!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")
+    SCD %in% c("CF6")
+    
+  ) %>%
+  ggplot(aes(x = DTY, y = CleanARR, color = SCD,  text = TAG)) +
+  geom_point() +
+  theme_classic() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.text.x = element_blank(),
+    
+    axis.ticks = element_blank()) +
+  labs(title = "Stationary Only Cleaned ARR scatterplot")
+x
+ggplotly(x)
+
+
+# mutate(TAG = str_replace(str_trim(TAG), "\\_", "")) %>%
+#   filter(str_detect(TAG, "^900"), 
 
 y <- s %>%
-  distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
-  #filter(!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2")) %>%
+  #distinct(DTY, SCD, TAG, .keep_all = TRUE) %>%
+  filter(
+    #!Event %in% c("Release", "Recapture", "B3", "B4", "M1", "M2"),
+         Event %in% c("RB1")
+         ) %>%
   ggplot(aes(x = DTY, y = ARR, color = SCD)) +
   geom_point() +
   theme_classic() +
@@ -1758,7 +1885,7 @@ y
 
 
 
-ggplotly(y) 
+ggplotly(x) 
 
 mutate(TAG = ifelse(str_detect(TAG, "^900"), str_sub(TAG, 4,-1), TAG),
        DTY = ifelse(str_detect(DTY, "/"), 
@@ -1926,6 +2053,8 @@ movements_df1 <- Movements_df %>%
   mutate(weeks_since = as.numeric(ceiling(difftime(Date, min(Date), units = "weeks"))),
          Date1 = as.character(Date)
          )
+
+
    
 plot <- movements_df1 %>%
   ggplot(aes(x = Date, fill = movement_only,
@@ -1939,15 +2068,75 @@ plot <- movements_df1 %>%
                                "Upstream Movement" = "chartreuse3",
                                "No Movement" = "black",
                                "Initial Release" = "darkorange"))
-  #scale_x_discrete(breaks = c("2020", "2021"))
-  # theme(axis.text.x = element_text( color="#993333", 
-  #                                  #size=14, 
-  #                                  angle=45))
-plot
+plot + 
+  geom_bar
 plotly1 <- ggplotly(p = plot)
 #?ggplotly
 plotly1
 
+####release events counted
+releases_moves <- Movements_df %>%
+  ungroup() %>%
+  count(Date, movement_only, name = "Num") %>%
+  mutate(Initial1 = case_when(movement_only == "Initial Release" ~ Num,
+         TRUE ~ as.integer(0)))
+  #separate(movement_only, c("Initial Release", "Movement1"))
+  # filter(
+  #   !is.na(movement_only),
+  #   movement_only %in% c("Initial Release"))
+
+plot <- releases_moves %>%
+  # filter(
+  #   !movement_only %in% c("Initial Release")
+  # )
+  ggplot(aes(x = Date, y = Num, fill = movement_only,
+             text = paste('Date: ', as.character(Date), '\n'))
+  ) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_classic() +
+  labs(title="Fish Movement by Day",
+       x ="Date", y = "Count") +
+  scale_fill_manual(values = c("Downstream Movement" = "red",
+                               "Upstream Movement" = "chartreuse3",
+                               "No Movement" = "black",
+                               "Initial Release" = "darkorange"))
+plot$data <- plot$data %>%
+  filter(
+    movement_only %in% c("Initial Release")
+  )
+
+plot +
+  geom_vline(aes(xintercept = Date))
+#   geom_bar(aes(y = Initial1), stat = )
+# fig <- releases %>%
+#   ggplot(aes(x = Date)) +
+#   geom_bar(stat = "count", position = "dodge") +
+#   theme_classic() +
+#   scale_y_reverse()
+
+fig <- plot_ly(releases, x = ~Date, y = ~Num, type = "bar")
+fig
+### geom_vline
+p <- ggplot(mtcars, aes(x = wt, y = mpg)) + geom_point()
+p + geom_vline(xintercept = 5)
+p + geom_vline(xintercept = 1:5)
+p + geom_vline(xintercept = 1:5, colour="green", linetype = "longdash")
+p
+p + geom_vline(aes(xintercept = wt))
+
+# With coordinate transforms
+p + geom_vline(aes(xintercept = wt)) + coord_equal()
+p + geom_vline(aes(xintercept = wt)) + coord_flip()
+p + geom_vline(aes(xintercept = wt)) + coord_polar()
+
+p2 <- p + aes(colour = factor(cyl))
+p2 + geom_vline(xintercept = 15)
+
+# To display different lines in different facets, you need to
+# create a data frame.
+p <- qplot(mpg, wt, data=mtcars, facets = vs ~ am)
+vline.data <- data.frame(z = c(15, 20, 25, 30), vs = c(0, 0, 1, 1), am = c(0, 1, 0, 1))
+p + geom_vline(aes(xintercept = z), vline.data)
 
 plotly2 <- plotly1 %>%
   #hovertemplate = 
@@ -2030,3 +2219,51 @@ x1 <- All_events %>%
 
 ggplotly(x1)
 
+
+x <- Movements_df %>%
+  #group_by(TAG) %>%
+  filter(
+    TAG 
+    
+    # det_type %in% c("Red Barn Stationary Antenna","Confluence Stationary Antenna") 
+    #      & det_type %in% c("Confluence Stationary Antenna")
+         ) 
+
+###Filter for above+below the dam
+ENC_Release2 <- df_list$ENC_Release2
+
+# ENC_Release3 <- ENC_Release2 %>%
+#   mutate(Abov_below = case_when(
+#     (RB1|RB2|HP3|HP4|B3) == TRUE & (CF5|CF6|B4) == TRUE ~ "Above and Below the Dam",
+#     (RB1|RB2|HP3|HP4|B3) == TRUE & (CF5&CF6&B4) == FALSE ~ "Below Dam Only",
+#                                 (CF5|CF6|B4) == TRUE ~ "Above Dam Only"))
+
+
+x <- All_events_days1 %>%
+  count(TAG, det_type, above_below, name = "Encounters") %>%
+  mutate(combined_event = paste(det_type, above_below),
+         EncountersTF = ifelse(Encounters > 0, 
+                               TRUE,
+                               FALSE))
+
+x1 <- pivot_wider(data = x, id_cols = TAG, names_from = combined_event, values_from = EncountersTF)
+x2 <- x1 %>%
+  select(TAG, `Release Above the Dam`,`Release Below the Dam`,`Recapture Above the Dam`,`Recapture Below the Dam`,`Recapture and Release Above the Dam`,`Recapture and Release Below the Dam`, `Mobile Run Above the Dam`, `Mobile Run Below the Dam`)
+  
+x2[is.na(x2)] = FALSE
+#x2[x2 > 0] = TRUE
+
+x3 <- left_join(ENC_Release2, x2, by = "TAG")
+
+x4 <- x3 %>%
+  mutate(through_dam = case_when(
+    (RB1|RB2|HP3|HP4|B3|`Release Below the Dam`|`Recapture Below the Dam`|`Recapture and Release Below the Dam`|`Mobile Run Below the Dam`) == TRUE & (CF5|CF6|B4|`Release Above the Dam`|`Recapture Above the Dam`|`Recapture and Release Above the Dam`|`Mobile Run Above the Dam`) == TRUE ~ "Went through dam",
+    (RB1|RB2|HP3|HP4|B3|`Release Below the Dam`|`Recapture Below the Dam`|`Recapture and Release Below the Dam`|`Mobile Run Below the Dam`) == TRUE & (CF5&CF6&B4&`Release Above the Dam`&`Recapture Above the Dam`&`Recapture and Release Above the Dam`&`Mobile Run Above the Dam`) == FALSE ~ "Stayed Below the Dam",
+    (RB1&RB2&HP3&HP4&B3&`Release Below the Dam`&`Recapture Below the Dam`&`Recapture and Release Below the Dam`&`Mobile Run Below the Dam`) == FALSE & (CF5|CF6|B4|`Release Above the Dam`|`Recapture Above the Dam`|`Recapture and Release Above the Dam`|`Mobile Run Above the Dam`) == TRUE ~ "Stayed Above the Dam",
+    
+  )) %>%
+  select(TAG, through_dam)
+
+###make column for release and recapture below the dam
+#make values either TRUE or FALSE
+#do logic for making row of "did it get through the dam"

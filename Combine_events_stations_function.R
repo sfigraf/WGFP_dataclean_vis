@@ -90,8 +90,7 @@ combine_events_and_stations <- function(All_events, station_data){
   
   #getting all_events down to most essential info: how a unique fish/Tag began the day, how it ended the day, and if there were events different than that in between
   All_events_days1 <- All_events_days %>%
-    #filter(!Event %in% c("M1", "M2")) %>% #filtering out mobile detections for now
-    
+
     group_by(Date, TAG) %>%
     mutate(first_last = case_when(Datetime == min(Datetime) & Event != "Release" ~ "First_of_day",
                                   Datetime == max(Datetime) ~ "Last_of_day",
@@ -118,11 +117,15 @@ combine_events_and_stations <- function(All_events, station_data){
                            str_detect(Event, "B4") ~ "Kaibab Park Biomark Antenna",
                            str_detect(Event, "M1|M2") ~ "Mobile Run",
                            Event == "Recapture" ~ "Recapture",
-                           TRUE ~ Event)
+                           TRUE ~ Event),
+      above_below = case_when(
+        ET_STATION >= 8330 ~ "Above the Dam",
+        ET_STATION< 8330 ~ "Below the Dam"
+      )
       
     ) %>%
     
-    select(Date, Datetime, TAG, Event, det_type, ReleaseSite,Species, Release_Length, Release_Weight, Release_Date, RecaptureSite, River, days_since, first_last, previous_event,  c_number_of_detections, daily_unique_events, ET_STATION, UTM_X, UTM_Y) #next_event, next_event_2, same_day_next_events,
+    select(Date, Datetime, TAG, Event, det_type, ReleaseSite,Species, Release_Length, Release_Weight, Release_Date, RecaptureSite, River, days_since, first_last, previous_event,  c_number_of_detections, daily_unique_events, ET_STATION, above_below, UTM_X, UTM_Y) #next_event, next_event_2, same_day_next_events,
   
   
   end_time <- Sys.time()

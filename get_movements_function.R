@@ -7,9 +7,11 @@ get_movements_function <- function(combined_events_stations) {
   
   movement_table_notrans <- combined_events_stations %>%
     select(Date, Datetime, TAG, det_type, Event, ET_STATION, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, River, UTM_X, UTM_Y) %>%
+    #grouping by TAG and arranging by datetime makes sure that total distance moved is totalled and summed in order
     group_by(TAG) %>%
+    arrange(Datetime) %>%
     mutate(dist_moved = ET_STATION - lag(ET_STATION, order_by = Datetime),
-           sum_dist = (sum(abs(diff(ET_STATION)))),
+           sum_dist = (sum(abs(diff(ET_STATION, na.rm = TRUE)))),
            
            
            movement_only = case_when(Event %in% c("Release", "Recapture and Release")  ~ "Initial Release",
@@ -50,7 +52,7 @@ get_movements_function <- function(combined_events_stations) {
   movement_table_notrans1 <- movement_table_notrans %>%
     distinct(Date, TAG, det_type, movement_only, UTM_X, UTM_Y, .keep_all = TRUE) %>%
     
-    select(Date, Datetime, TAG, movement_only, det_type,  dist_moved, ET_STATION, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, River, UTM_X, UTM_Y, X, Y, Event, sum_dist, marker_color, icon_color)
+    select(Date, Datetime, TAG, movement_only, det_type, dist_moved, sum_dist, ET_STATION, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, River, UTM_X, UTM_Y, X, Y, marker_color, icon_color)
   
   #giving id column to make map proxy easier
   #movement_table_notrans1$id <- seq.int(nrow(movement_table_notrans1))

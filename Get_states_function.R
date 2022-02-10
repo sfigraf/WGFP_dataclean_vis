@@ -21,6 +21,7 @@
 
 
 #station_data <- Stationdata1
+#All_events_stations_combined <- combined_events_stations
 
 Get_states_function <- function(All_events_stations_combined) {
   library(tidyverse) 
@@ -29,92 +30,6 @@ Get_states_function <- function(All_events_stations_combined) {
   start_time <- Sys.time()
   
 
-# Combining stations into all_events dataset ------------------------------
-  #just getting distinct rows makes joining easier; all we need from this df is stations
-#   stations <- station_data %>%
-#     rename(
-#       Datetime = Datetime_,
-#       Time = Time_) %>%
-#     mutate(
-#       Date = mdy(Date_),
-#       ET_STATION = case_when(station_data$River %in% "Fraser River" ~ station_data$ET_STATION + 9566, #9566 is above Fraser River Confluence
-#                                   station_data$River %in% "Colorado River" ~ station_data$ET_STATION)) %>%
-#     distinct(Event, UTM_X, UTM_Y, TAG, .keep_all = TRUE) %>%
-#     select(-Date_)
-#     
-#   
-#   #massive datafrmae occurs when there are multiple rows in B for which the key columns (same-name columns by default) match the same, single row in A
-#   #usually this means you have to make sure you join by the fields which will not have any differenitation: iun this case, "TAG", UTM_X", "UTM_Y", and "Event". The other fields are just to help keep the dataframe more concise
-#   
-#   all_events_stations_2 <- left_join(All_events, stations, by = c("TAG", "UTM_X", "UTM_Y", "Event")) # "Species", "Release_Length", "Release_Weight", "Event", "Date", "Time", "ReleaseSite", "Release_Date", "RecaptureSite", "Recap_Length", "Recap_Weight"
-#   
-#   all_events_stations_21 <- all_events_stations_2 %>%
-#     filter(is.na(ET_STATION))
-# 
-#   All_events_stations_3 <- all_events_stations_2 %>%
-#     # select(-ET_STATION) %>%
-#     # rename(ET_STATION = ET_STATION1) %>%
-#     mutate(ET_STATION = case_when(
-#                                   (Event %in% c("RB1", "RB2")) ~ 4150, # 
-#                                   is.na(ET_STATION) & (Event %in% c("HP3", "HP4")) ~ 6340,
-#                                   is.na(ET_STATION) & (Event %in% c("CF5", "CF6")) ~ 9550,
-#                                   is.na(ET_STATION) & (Event %in% c("B3")) ~ 8290,
-#                                   !is.na(ET_STATION) & (!Event %in% c("RB1", "RB2")) ~ ET_STATION)) %>%
-#     # this line just makes the df smaller if htere are duplicates; usually doesn't change anything
-#     distinct(Datetime.x, Event, TAG, .keep_all =TRUE) %>%
-#     rename(
-#       
-#       Date = Date.x,
-#       Time = Time.x,
-#       Datetime = Datetime.x,
-#       
-#       Species = Species.x,
-#       Release_Length = Release_Length.x,
-#       Release_Weight = Release_Weight.x, 
-#       ReleaseSite = ReleaseSite.x,
-#       Release_Date = Release_Date.x,
-#       RecaptureSite = RecaptureSite.x,
-#       Recap_Length = Recap_Length.x,
-#       Recap_Weight = Recap_Weight.x
-#       
-#     ) %>%
-#     select(Date, Time, Datetime, TAG, Event, Species, Release_Length, Release_Weight, ReleaseSite, Release_Date, RecaptureSite, River, Recap_Length, Recap_Weight, UTM_X, UTM_Y, ET_STATION)
-#   
-# 
-# # Days_since and Prev_event -----------------------------------------------
-# 
-#   
-#   All_events_days <- All_events_stations_3 %>%
-#     mutate(days_since = as.numeric(ceiling(difftime(Date, min(Date), units = "days")))
-#     )
-#   
-#   
-#   All_events_days1 <- All_events_days %>%
-#     #filter(!Event %in% c("M1", "M2")) %>% #filtering out mobile detections for now
-#     
-#     group_by(Date, TAG) %>%
-#     mutate(first_last = case_when(Datetime == min(Datetime) & Event != "Release" ~ "First_of_day",
-#                                   Datetime == max(Datetime) ~ "Last_of_day",
-#                                   Datetime != min(Datetime) & Datetime != max(Datetime) ~ "0",
-#                                   #Event == "Release" ~ "Last_of_day"
-#                                   ),
-#            c_number_of_detections = n(),
-#            daily_unique_events = length(unique(Event))
-#     ) %>%
-#     ungroup() %>%
-#     distinct(TAG, Event, Date, first_last, UTM_X, UTM_Y, .keep_all = TRUE) %>%
-#     
-#     group_by(TAG) %>%
-#     mutate(
-#       previous_event = lag(Event, order_by = Datetime)
-#       # next_event = lead(Event, order_by = Datetime),
-#       # next_event_2 = lead(Event, n = 2, order_by = Datetime
-#                           # ),
-#       
-#       #same_day_next_events = (lead(Date, order_by = Datetime) == lead(Date, n = 2, order_by = Datetime))
-#   ) %>%
-#     
-#     select(Date, Datetime,TAG,Event,ReleaseSite,Species, Release_Length, Release_Weight, Release_Date, RecaptureSite, River, days_since, first_last, previous_event,  c_number_of_detections, daily_unique_events, ET_STATION, UTM_X, UTM_Y) #next_event, next_event_2, same_day_next_events,
 
   r1 <- All_events_stations_combined %>%
     # no need to group_by date until states will be consolidated
@@ -139,28 +54,7 @@ Get_states_function <- function(All_events_stations_combined) {
                                      Event == "CF5" ~ 4.9,
                                      Event == "CF6" ~ 4.1,
                                      Event == "B3" ~ 6,
-                                     Event == "B4" ~ .9,
-                                     
-                                     # #rekease site needs values for if a fish is only released and recaptured, #230000228364 it will have movement
-                                     # Event == "Release" & ReleaseSite == "Lower River Run" ~ 4,
-                                     # Event == "Release" & ReleaseSite == "Fraser River Ranch" ~ 2,
-                                     # Event == "Release" & ReleaseSite == "Kaibab Park" ~ 1,
-                                     # Event == "Release" & ReleaseSite == "Upper River Run" ~ 3,
-                                     # Event == "Release" & ReleaseSite == "Below Confluence Antenna" ~ 5,
-                                     # Event == "Release" & ReleaseSite == "Windy Gap Dam" ~ 6,
-                                     # Event == "Release" & ReleaseSite == "Hitching Post" ~ 7,
-                                     # Event == "Release" & ReleaseSite == "Chimney Rock Above Island" ~ 8,
-                                     # Event == "Release" & ReleaseSite == "Chimney Rock Below Island" ~ 9,
-                                     # Event == "Release" & ReleaseSite == "Upper Red Barn Fry Site" ~ 10,
-                                     # Event == "Release" & ReleaseSite == "Pool Above Red Barn Antenna" ~ 11,
-                                     # Event == "Release" & ReleaseSite == "Lower Red Barn Fry Site" ~ 12,
-                                     # Event == "Release" & ReleaseSite == "Below Red Barn Diversion #1" ~ 13,
-                                     # Event == "Release" & ReleaseSite == "Below Red Barn Diversion #2" ~ 14,
-                                     # Event == "Release" & ReleaseSite == "Kinney Creek" ~ 15,
-                                     # Event == "Release" & ReleaseSite == "Dark Timber Above Railroad" ~ 16,
-                                     # Event == "Release" & ReleaseSite == "Sheriff Ranch Upper Field" ~ 17,
-                                     # Event == "Release" & ReleaseSite == "Shefiff Ranch Middle Field" ~ 18,
-                                     # Event == "Release" & ReleaseSite == "Sheriff Ranch Fry Site" ~ 19,
+                                     Event == "B4" ~ .9, #this ensures that kaibab park release to dtecitons will get a slight upstream move
                                      
                                      Event == "Recapture" & RecaptureSite == "Lower River Run" ~ 4,
                                      Event == "Recapture" & RecaptureSite == "Fraser River Ranch" ~ 2,
@@ -183,120 +77,12 @@ Get_states_function <- function(All_events_stations_combined) {
                                      Event == "Recapture" & RecaptureSite == "Sheriff Ranch Fry Site" ~ 19
                                      
       ),
-      # previous_event_vals = case_when(previous_event == "RB1" ~ 11.9,
-      #                                 previous_event == "RB2" ~ 11.1,
-      #                                 previous_event == "HP3" ~ 7.9,
-      #                                 previous_event == "HP4" ~ 7.1,
-      #                                 previous_event == "CF5" ~ 4.9,
-      #                                 previous_event == "CF6" ~ 4.1,
-      #                                 previous_event == "B3" ~ 6,
-      #                                 previous_event == "B4" ~ .9,
-      #                                 
-      #                                 #using str_detect with "Release" gets both Release events and "recap and release" events
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Lower River Run" ~ 4,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Fraser River Ranch" ~ 2,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Kaibab Park" ~ 1,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Upper River Run" ~ 3,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Below Confluence Antenna" ~ 5,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Windy Gap Dam" ~ 6,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Hitching Post" ~ 7,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Chimney Rock Above Island" ~ 8,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Chimney Rock Below Island" ~ 9,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Upper Red Barn Fry Site" ~ 10,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Pool Above Red Barn Antenna" ~ 11,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Lower Red Barn Fry Site" ~ 12,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Below Red Barn Diversion #1" ~ 13,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Below Red Barn Diversion #2" ~ 14,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Kinney Creek" ~ 15,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Dark Timber Above Railroad" ~ 16,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Sheriff Ranch Upper Field" ~ 17,
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Shefiff Ranch Middle Field" ~ 18, #will need to be changed once this typo is corrected
-      #                                 str_detect(previous_event, "Release") & ReleaseSite == "Sheriff Ranch Fry Site" ~ 19,
-      #                                 
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower River Run" ~ 4,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Fraser River Ranch" ~ 2,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kaibab Park" ~ 1,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper River Run" ~ 3,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Confluence Antenna" ~ 5,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Windy Gap Dam" ~ 6,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Hitching Post" ~ 7,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Above Island" ~ 8,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Below Island" ~ 9,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper Red Barn Fry Site" ~ 10,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Pool Above Red Barn Antenna" ~ 11,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower Red Barn Fry Site" ~ 12,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #1" ~ 13,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #2" ~ 14,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kinney Creek" ~ 15,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Dark Timber Above Railroad" ~ 16,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Upper Field" ~ 17,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Shefiff Ranch Middle Field" ~ 18,
-      #                                 previous_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Fry Site" ~ 19
-      #                                 
-      #                                 
-      # ),
-      
-      #this section is going to disappear because we aren't acknowldgeing detections that 
-      # next_event_vals = case_when(next_event == "RB1" ~ 11.9,
-      #                                 next_event == "RB2" ~ 11.1,
-      #                                 next_event == "HP3" ~ 7.9,
-      #                                 next_event == "HP4" ~ 7.1,
-      #                                 next_event == "CF5" ~ 4.9,
-      #                                 next_event == "CF6" ~ 4.1,
-      #                                 next_event == "B3" ~ 6,
-      #                                 next_event == "B4" ~ 1,
-      #                                 
-      #                                 #using str_detect with "Release" gets both Release events and "recap and release" events
-      #                                 ### may not need this section since you'd assume that release is never going to happen AFTER detections; 
-      #                                 # but there is that time in may 2021 with the mark recapture study where there are (230000) 272140, 272063, 272153, 272273, and 142517 that have detections before official "release"
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Lower River Run" ~ 4,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Fraser River Ranch" ~ 2,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Kaibab Park" ~ 1,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Upper River Run" ~ 3,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Below Confluence Antenna" ~ 5,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Windy Gap Dam" ~ 6,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Hitching Post" ~ 7,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Chimney Rock Above Island" ~ 8,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Chimney Rock Below Island" ~ 9,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Upper Red Barn Fry Site" ~ 10,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Pool Above Red Barn Antenna" ~ 11,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Lower Red Barn Fry Site" ~ 12,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Below Red Barn Diversion #1" ~ 13,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Below Red Barn Diversion #2" ~ 14,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Kinney Creek" ~ 15,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Dark Timber Above Railroad" ~ 16,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Sheriff Ranch Upper Field" ~ 17,
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Shefiff Ranch Middle Field" ~ 18, #will need to be changed once this typo is corrected
-      #                                 str_detect(next_event, "Release") & ReleaseSite == "Sheriff Ranch Fry Site" ~ 19,
-      #                                 
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower River Run" ~ 4,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Fraser River Ranch" ~ 2,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kaibab Park" ~ 1,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper River Run" ~ 3,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Confluence Antenna" ~ 5,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Windy Gap Dam" ~ 6,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Hitching Post" ~ 7,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Above Island" ~ 8,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Chimney Rock Below Island" ~ 9,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Upper Red Barn Fry Site" ~ 10,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Pool Above Red Barn Antenna" ~ 11,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Lower Red Barn Fry Site" ~ 12,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #1" ~ 13,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Below Red Barn Diversion #2" ~ 14,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Kinney Creek" ~ 15,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Dark Timber Above Railroad" ~ 16,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Upper Field" ~ 17,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Shefiff Ranch Middle Field" ~ 18,
-      #                                 next_event == "Recapture" & lag(RecaptureSite, order_by = Datetime) == "Sheriff Ranch Fry Site" ~ 19
-      #                                 
-      #                                 
-      # ),
     
       movement = case_when(
         
         Event %in% c("Release", "Recapture and Release") ~ "Initial Release",
         #if the values are more or less than previous values, it's moved upstream or downstream
-        #ET_STATION - lag(ET_STATION) > 0 ~ 
+        
         
 
         #transitions can only happen on one day
@@ -450,19 +236,6 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
                                str_detect(movement, "Downstream Transition") & str_detect(Event, "CF5|CF6") ~ "L",
                                
         
-                               # movement %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "L",
-                               # movement %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas")  & (Event %in% c("CF5", "CF6")) ~ "K",
-                               # movement %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas") & (Event %in% c("HP3", "HP4")) ~ "J",
-                               # movement %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas") & (Event %in% c("HP3", "HP4")) ~ "I",
-                               # movement %in% c("Downstream Movement", "Downstream Movement1","Downstream Movement without hitting both antennas") & (Event %in% c("RB1", "RB2")) ~ "H",
-                               # movement %in% c("Upstream Movement", "Upstream Movement1", "Upstream Movement without hitting both antennas") & (Event %in% c("RB1", "RB2")) ~ "G",
-                               # movement == "Up then back down move" & (Event %in% c("HP3")) ~ "IJ",
-                               # movement == "Up then back down move" & (Event %in% c("RB1")) ~ "GH",
-                               # movement == "Up then back down move" & (Event %in% c("CF5")) ~ "KL",
-                               # movement == "Down then back up move" & (Event %in% c("HP4")) ~ "JI",
-                               # movement == "Down then back up move" & (Event %in% c("RB2")) ~ "HG",
-                               # movement == "Down then back up move" & (Event %in% c("CF6")) ~ "LK",
-                               # 
                                
                                ET_STATION <= 4150 & !Event %in% c("RB1", "RB2", "HP3", "HP4", "CF5", "CF6") ~ "A",
                                ET_STATION > 4150 & ET_STATION <= 6340 & !Event %in% c("RB1", "RB2", "HP3", "HP4", "CF5", "CF6") ~ "B",
@@ -471,56 +244,16 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
                                ET_STATION > 9550 & River %in% c("Colorado River") & !Event %in% c("RB1", "RB2", "HP3", "HP4", "CF5", "CF6") ~ "E",
                                ET_STATION > 9550 & River %in% c("Fraser River") & !Event %in% c("RB1", "RB2", "HP3", "HP4", "CF5", "CF6") ~ "F",
                                
-                               # Event == "B3" ~ "C",
-                               # Event == "B4" ~ "F",
-                               # str_detect(Event, "Release") & ReleaseSite == "Lower River Run" ~ "E",
-                               # str_detect(Event, "Release") & ReleaseSite == "Fraser River Ranch" ~ "F",
-                               # str_detect(Event, "Release") & ReleaseSite == "Kaibab Park" ~ "F",
-                               # str_detect(Event, "Release") & ReleaseSite == "Upper River Run" ~ "E",
-                               # str_detect(Event, "Release") & ReleaseSite == "Below Confluence Antenna" ~ "D",
-                               # str_detect(Event, "Release") & ReleaseSite == "Windy Gap Dam" ~ "C",
-                               # str_detect(Event, "Release") & ReleaseSite == "Hitching Post"~ "C",
-                               # str_detect(Event, "Release") & ReleaseSite == "Chimney Rock Above Island" ~ "B",
-                               # str_detect(Event, "Release") & ReleaseSite == "Chimney Rock Below Island" ~ "B",
-                               # str_detect(Event, "Release") & ReleaseSite == "Upper Red Barn Fry Site" ~ "B",
-                               # str_detect(Event, "Release") & ReleaseSite == "Pool Above Red Barn Antenna" ~ "B",
-                               # str_detect(Event, "Release") & ReleaseSite == "Lower Red Barn Fry Site" ~ "A",
-                               # str_detect(Event, "Release") & ReleaseSite == "Below Red Barn Diversion #1" ~ "A",
-                               # str_detect(Event, "Release") & ReleaseSite == "Below Red Barn Diversion #2" ~ "A",
-                               # str_detect(Event, "Release") & ReleaseSite == "Kinney Creek" ~ "A",
-                               # str_detect(Event, "Release") & ReleaseSite == "Dark Timber Above Railroad" ~ "A",
-                               # str_detect(Event, "Release") & ReleaseSite == "Sheriff Ranch Upper Field" ~ "A",
-                               # str_detect(Event, "Release") & ReleaseSite == "Shefiff Ranch Middle Field" ~ "A", #will need to be changed once this typo is corrected
-                               # str_detect(Event, "Release") & ReleaseSite == "Sheriff Ranch Fry Site" ~ "A",
-                               # 
-                               # #recapture state
-                               # RecaptureSite == "Lower River Run" ~ "E",
-                               # RecaptureSite == "Fraser River Ranch" ~ "F",
-                               # RecaptureSite == "Kaibab Park" ~ "F",
-                               # RecaptureSite == "Upper River Run" ~ "E",
-                               # RecaptureSite == "Below Confluence Antenna" ~ "D",
-                               # RecaptureSite == "Windy Gap Dam" ~ "C",
-                               # RecaptureSite == "Hitching Post"~ "C",
-                               # RecaptureSite == "Chimney Rock Above Island" ~ "B",
-                               # RecaptureSite == "Chimney Rock Below Island" ~ "B",
-                               # RecaptureSite == "Upper Red Barn Fry Site" ~ "B",
-                               # RecaptureSite == "Pool Above Red Barn Antenna" ~ "B",
-                               # RecaptureSite == "Lower Red Barn Fry Site" ~ "A",
-                               # RecaptureSite == "Below Red Barn Diversion #1" ~ "A",
-                               # RecaptureSite == "Below Red Barn Diversion #2" ~ "A",
-                               # RecaptureSite == "Kinney Creek" ~ "A",
-                               # RecaptureSite == "Dark Timber Above Railroad" ~ "A",
-                               # RecaptureSite == "Sheriff Ranch Upper Field" ~ "A",
-                               # RecaptureSite == "Shefiff Ranch Middle Field" ~ "A", #will need to be changed once this typo is corrected
-                               # RecaptureSite == "Sheriff Ranch Fry Site" ~ "A",
+                              
       ) #end of case_when
-      
+     # thought about adding column for if afish misses a detection on a sister antenna; but that would take a bit more work than I'm willing to go atm
       
     ) #%>% #end of mutate
-  
+  ### will have a lot of NA's here because in the code above, a state is not coded if a fish has a no movement for that day, or hits one antenna but doesn't transition, etc
+  # see unique(unkown_states$movement) for full list
   unknown_states <- states %>%
     filter(is.na(teststate_11)) %>%
-    select(Datetime, TAG, Event, teststate_11)
+    select(Datetime, TAG, Event, movement, teststate_11)
   
   states1 <- states %>%
     filter(!is.na(teststate_11)) %>%
@@ -551,7 +284,7 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
   
   states_final <- states1 %>%
     distinct(Date, TAG, teststate_5, .keep_all = TRUE) %>%
-    select(Date, Datetime, TAG, teststate_5, det_type, Event, ReleaseSite, Species, Release_Length, Release_Weight, c_number_of_detections, daily_unique_events, days_since, UTM_X, UTM_Y) %>%
+    select(Date, Datetime, TAG, teststate_5, det_type, ReleaseSite, Species, Release_Length, Release_Weight, c_number_of_detections, daily_unique_events, days_since, UTM_X, UTM_Y) %>%
     rename(State = teststate_5)
   
   
@@ -562,7 +295,7 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
   #   filter(!is.na(previous_event) & !Event %in% c("Release", "Recapture and Release" ))
 
 # Movements --------------------------------------------
-
+  ##this hopefully should be pretty small...filled with tags with detections before official "Release" and tags without release info
    unknown_movements <- r1 %>%
     filter(
       #!ReleaseSite %in% c("Pool Above Red Barn Antenna"),
@@ -570,88 +303,6 @@ current_event_vals == lag(current_event_vals, order_by = Datetime) & (Date != la
            #!is.na(previous_event), #don't want entries 
       is.na(movement)
       )
-  
-  # movement_table_notrans <- r1 %>%
-  #   select(Date, Datetime, TAG, det_type, Event, movement,ET_STATION,  ReleaseSite, Release_Date, RecaptureSite, UTM_X, UTM_Y) %>%
-  #   group_by(TAG) %>%
-  #   mutate(dist_moved = ET_STATION - lag(ET_STATION, order_by = Datetime),
-  #          sum_dist = (sum(abs(diff(ET_STATION)))),
-  #          
-  #                                
-  #          movement_only = case_when(Event == "Release" ~ "Initial Release",
-  #            dist_moved == 0 ~ "No Movement",
-  #                            dist_moved > 0 ~ "Upstream Movement",
-  #                            dist_moved < 0 ~ "Downstream Movement"),
-  #          #this is for mapping later on
-  #          marker_color = case_when(movement_only == "No Movement" ~ "black",
-  #                                   movement_only == "Upstream Movement" ~ "green",
-  #                                   movement_only == "Downstream Movement" ~ "red",
-  #                                   str_detect(movement_only, "Initial Release") ~ "blue"),
-  #          
-  #          icon_color = case_when(str_detect(det_type, "Stationary Antenna") ~ "orange",
-  #                                 str_detect(det_type, "Biomark Antenna") ~ "yellow",
-  #                                 str_detect(det_type, "Mobile Run") ~ "purple",
-  #                                 str_detect(det_type, "Release") ~ "cyan",
-  #                                 str_detect(det_type, "Recapture") ~ "brown",
-  #             ),
-  #          X = as.numeric(UTM_X),
-  #          Y = as.numeric(UTM_Y)
-  #          ) #end of mutate
-  # 
-  # attr(movement_table_notrans, "zone") = "13"
-  # attr(movement_table_notrans, "projection") = "UTM"
-  # attr(movement_table_notrans, "datum") = "GRS80"
-  # 
-  # # need a column that has x and Y for this 
-  # movement_table_notrans <- convUL(movement_table_notrans, km=FALSE, southern=NULL) #colorado is in utm zone 13
-    
-    ### This section is trying to make a concise movements+transitions column
-  # xx <- left_join(movement_table_notrans, states, by = c("Date", "Datetime", "TAG", "movement"))
-  # xx1 <- xx %>%
-  #   mutate(teststate_12 = case_when(is.na(teststate_11) ~ "",
-  #                                   TRUE ~ teststate_11),
-  #          movement_only_5 = case_when(movement_only == "No Movement" ~ "",
-  #                              TRUE ~ movement_only))
-  # xx2 <- xx1 %>%
-  #   #mutate(x1 <- Datetime.x == Datetime.y)
-  #   group_by(Date, TAG, det_type) %>%
-  #   arrange(Datetime) %>%
-  #   mutate( move3 = paste(movement_only_5, teststate_12, collapse = ""),
-  #     move4 = case_when(
-  #       # (movement_only == "Upstream Movement" & str_detect(movement, "Upstream Transition")) | movement == "Upstream Movement Before continuing Upstream to transition at that site" ~ paste("Upstream Movement and Transition at ",det_type),
-  #       #                       (movement_only == "Downstream Movement" & str_detect(movement, "Downstream Transition")) | movement == "Downstream Movement Before continuing downstream to transition at that site" ~ paste("Downstream Movement and Transition at ",det_type),
-  #                       str_detect(move3, "Upstream Movement") & str_detect(move3, " G| I| K") ~ paste("Upstream Movement and Transition on",det_type),
-  #                       str_detect(move3, "Downstream Movement") & str_detect(move3, " H| J| L") ~ paste("Downstream Movement and Transition on",det_type),
-  #                       str_detect(move3, "Upstream Movement") & str_detect(move3, " G| I| K", negate = TRUE) ~ paste("Upstream Movement on",det_type),
-  #                       str_detect(move3, "Downstream Movement") & str_detect(move3, " H| J| L", negate = TRUE) ~ paste("Downstream Movement on",det_type),
-  #                       str_detect(move3, "Initial Release") ~ paste("Initial Release at",ReleaseSite.x)
-  #                       
-  #                             #TRUE ~ movement_only
-  #   )#end of case_when)
-  #   ) %>%
-  #   distinct(TAG, Date, move4, .keep_all = TRUE)
-  # 
-  # movement_table_trans <- movement_table_notrans %>%
-  #   mutate( move3 = case_when((movement_only == "Upstream Movement" & str_detect(movement, "Upstream Transition")) | movement == "Upstream Movement Before continuing Upstream to transition at that site" ~ paste("Upstream Movement and Transition at ",det_type),
-  #                             (movement_only == "Downstream Movement" & str_detect(movement, "Downstream Transition")) | movement == "Downstream Movement Before continuing downstream to transition at that site" ~ paste("Downstream Movement and Transition at ",det_type),
-  #                             #TRUE ~ movement_only
-  #   )#end of case_when)
-  #   )
-    
-    
-  
-  #testState4 is really the realState
-  # r3 <- r2 %>%
-  #   # mutate(New_movt = case_when(State %in% c("GH", "HG","LK","KL", "IJ","JI") ~ "No Net Movement",
-  #   #                             State %in% c("K","I","G")~ "Upstream Movement",
-  #   #                             State %in% c("L","J", "H") ~ "Downstream Movement",
-  #   #                             State == lag(State, order_by = Datetime) ~ "No Net Movement",
-  #   #                             State != lag(State, order_by = Datetime) & (State > lag(State, order_by = Datetime)) ~ "Upstream Movement",
-  #   #                             State != lag(State, order_by = Datetime) & (State < lag(State, order_by = Datetime)) ~ "Downstream Movement")
-  #   #                     )
-  #   
-  #   
-  #   select(Date, Datetime,TAG,Event,State, movement, ReleaseSite,RecaptureSite, days_since, first_last, previous_event)
   
 
 # Pivot_wider -------------------------------------------------------------

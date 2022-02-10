@@ -1,4 +1,7 @@
 #### ENC HIST summary table function
+# recaps_and_all_detections <- df_list$Recaps_detections
+# release_data <- Release
+# all_events_condensed_with_stations <- combined_events_stations
 
 #recaps and all detreitons comes from WGFP ENC_hist_function, release data is a read_in csv, all_events_condensed with stations comes from combine_stations_events function
 enc_hist_wide_summary_function <- function(recaps_and_all_detections, release_data, all_events_condensed_with_stations){
@@ -40,11 +43,13 @@ enc_hist_wide_summary_function <- function(recaps_and_all_detections, release_da
   # was geting a massive dataframe because the Release df is called TAGid not TAG.
   #need to actually join on full join not merge
   ENC_Release <- full_join(Release1, ENC_ALL,  by = "TAG")
-  #gets tag list that wasn't in release file
-  x <- ENC_Release %>%
-    filter(is.na(ReleaseSite))
   
-  unknown_tags <- x$TAG
+  #gets tag list that wasn't in release file
+  unknown_tags <- ENC_Release %>%
+    filter(is.na(ReleaseSite)) %>%
+    select(TAG,where(is.numeric))
+  
+  
   #ENC_Release11$TAG[3433:nrow(ENC_Release11)]
   ENC_Release[is.na(ENC_Release)]=0 #gets rest of the number count columns to 0 from NA
   
@@ -91,7 +96,9 @@ enc_hist_wide_summary_function <- function(recaps_and_all_detections, release_da
            Mobile = (M1_n > 0 | M2_n >0)) %>%
     filter(!UTM_X %in% c(0, NA)) # one way to filter out tags that don't have any sort of release data; usually if they're entered in release file then they have UTM's
   
-  ###this is the spot to bring in station stuff and make that one column
+  ###Bringing in Station data with info about ABOVE/BELOW dam for joining
+  
+  
   above_below_counts <- all_events_condensed_with_stations %>%
     count(TAG, det_type, above_below, name = "Encounters") %>%
     mutate(combined_event = paste(det_type, above_below),
@@ -113,9 +120,30 @@ enc_hist_wide_summary_function <- function(recaps_and_all_detections, release_da
       (RB1|RB2|HP3|HP4|B3|`Release Below the Dam`|`Recapture Below the Dam`|`Recapture and Release Below the Dam`|`Mobile Run Below the Dam`) == TRUE & (CF5&CF6&B4&`Release Above the Dam`&`Recapture Above the Dam`&`Recapture and Release Above the Dam`&`Mobile Run Above the Dam`) == FALSE ~ "Stayed Below the Dam",
       (RB1&RB2&HP3&HP4&B3&`Release Below the Dam`&`Recapture Below the Dam`&`Recapture and Release Below the Dam`&`Mobile Run Below the Dam`) == FALSE & (CF5|CF6|B4|`Release Above the Dam`|`Recapture Above the Dam`|`Recapture and Release Above the Dam`|`Mobile Run Above the Dam`) == TRUE ~ "Stayed Above the Dam",
       
-    )) 
+    ))
+  #rearranging so that Tag is first column shown
+  ENC_Release4<- ENC_Release4 %>%
+    select(TAG, 1:ncol(ENC_Release4))
+  ###joining on column with sum data
+  #same code appears in movements function
+  sum_dist1 <- all_events_condensed_with_stations %>%
+    group_by(TAG) %>%
+    arrange(Datetime) %>%
+    mutate(dist_moved = ET_STATION - lag(ET_STATION, order_by = Datetime),
+           sum_dist = (sum(abs(diff(ET_STATION, na.rm = TRUE))))
+    ) %>% #end of mutate
+    distinct(TAG, .keep_all = TRUE) %>%
+    select(TAG, sum_dist)
+  
+  ENC_Release5 <- ENC_Release4 %>%
+    left_join(sum_dist1, by = "TAG")
+  
+  
+  
+  
+  
   enc_wide_list <- list(
-    "ENC_Release_wide_summary" = ENC_Release4, "Unknown_Tags" = unknown_tags
+    "ENC_Release_wide_summary" = ENC_Release5, "Unknown_Tags" = unknown_tags
   )
   
   end_time <- Sys.time()

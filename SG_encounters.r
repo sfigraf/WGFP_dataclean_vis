@@ -2267,3 +2267,18 @@ x4 <- x3 %>%
 ###make column for release and recapture below the dam
 #make values either TRUE or FALSE
 #do logic for making row of "did it get through the dam"
+
+min(All_events$Release_Length, na.rm = TRUE)
+
+
+x <- movement_table_notrans %>%
+  distinct(TAG, .keep_all = TRUE)
+
+x1 <- x %>%
+  ggplot(aes(x = sum_dist, text = unique(TAG))) +
+  geom_histogram(
+    #binwidth = 30
+  ) +
+  theme_classic()
+x1
+ggplotly(x1)

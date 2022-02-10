@@ -43,12 +43,15 @@ Release_05 <- Release %>%
 
 Recaptures_05 <- Recaptures %>%
   mutate(Date = as.character(mdy(Date)))
-
+#functions
 source("WGFP_EncounterHistoriesFunction.R")
 source("Combine_events_stations_function.R")
 source("enc_hist_wide_summary_function.R")
 source("get_movements_function.R")
 source("Get_states_function.R")
+
+#mapping
+source("map_polygon_readins.R")
 
 df_list <- WGFP_Encounter_FUN(Stationary = Stationary, Mobile = Mobile, Release= Release, Biomark = Biomark, Recaptures = Recaptures)
 All_events <- df_list$All_Events
@@ -199,7 +202,7 @@ ui <- fluidPage(
                                                  )
                                      ), #end of picker 12 input
                                      pickerInput(inputId = "picker14",
-                                                 label = "Number of Unique Events/Encounters:",
+                                                 label = "Total Number of Unique Events/Encounters:",
                                                  choices = sort(unique(Enc_release_data$TotalEncounters)),
                                                  selected = unique(Enc_release_data$TotalEncounters),
                                                  multiple = TRUE,
@@ -1286,10 +1289,12 @@ server <- function(input, output, session) {
       
       
       leaflet(filtered_movements_data()) %>% #Warning: Error in UseMethod: no applicable method for 'metaData' applied to an object of class "NULL"  solved becuase leaflet() needs an arg leaflet(x)
-        addProviderTiles(providers$Esri.WorldImagery,options = providerTileOptions()) %>%
-        
+        addProviderTiles(providers$Esri.WorldImagery,
+                         options = providerTileOptions(maxZoom = 19.5)
+                         ) %>%
+        ##detections: based off reactives
         addAwesomeMarkers(
-          #group = "original",
+          group = "Detections",
           clusterOptions = markerClusterOptions(),
           lng=~X, 
           lat = ~Y,
@@ -1302,7 +1307,46 @@ server <- function(input, output, session) {
             "Release Site:", filtered_movements_data()$ReleaseSite, "<br>",
             "Detection Event:", filtered_movements_data()$det_type, "<br>",
             "Date:", as.character(filtered_movements_data()$Datetime))
-          )
+          ) %>%
+        
+        ###polylines and points: obtained from GISdb from this study
+        addAwesomeMarkers(data = stationary_antennas@coords,
+                          icon = Station_icons,
+                          clusterOptions = markerClusterOptions(),
+                          label = paste(stationary_antennas@data$SiteLabel),
+                          popup = paste(stationary_antennas@data$SiteName, "<br>",
+                                        "Channel Width:", stationary_antennas@data$ChannelWid, "feet"),
+                          group = "Antennas") %>% # error: don't know jow to get path Data from x....solved by specifying coordinate location with @ within data
+        addPolylines(data = stream_centerline@lines[[1]], 
+                     color = "blue",
+                     opacity = 1,
+                     popup = paste("Colorado River Centerline"),
+                     group = "Stream Centerlines") %>%
+        addPolylines(data = stream_centerline@lines[[2]],
+                     color = "blue",
+                     opacity = 1,
+                     popup = paste("Fraser River Centerline"),
+                     group = "Stream Centerlines") %>%
+        addPolylines(data = mobile_reaches,
+                     color = "yellow",
+                     opacity = 1,
+                     label = mobile_reaches@data$River,
+                     popup = paste("Mobile Run:", mobile_reaches@data$River, 
+                                   "<br>"),
+                     group = "Mobile Reaches") %>%
+        addAwesomeMarkers(data = releasesites@coords,
+                          icon = release_icons,
+                          clusterOptions = markerClusterOptions(),
+                          label = releasesites@data$ReleaseSit, 
+                          popup = paste("Release Date1:", releasesites@data$ReleaseDat, "<br>","Release Date 2:",  releasesites@data$ReleaseD_1),
+                          group = "Release Sites") %>%
+        addPolylines(data = simple_stations2, 
+                     label = simple_stations2@data$ET_STATION,
+                     labelOptions = labelOptions(noHide = T, textOnly = TRUE, style = label_style),
+                     group = "Stations (m)") %>%
+        addLayersControl(overlayGroups = c("Antennas", "Detections", "Release Sites", "Stream Centerlines", "Stations (m)", "Mobile Reaches")) %>%
+        hideGroup(c("Stream Centerlines", "Stations (m)", "Antennas", "Release Sites", "Mobile Reaches"))
+      
       
     })
     

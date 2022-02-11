@@ -216,11 +216,11 @@ WGFP_Encounter_FUN= function(Stationary, Mobile, Biomark, Release, Recaptures){
            UTM_X = UTM_X.x,
            UTM_Y = UTM_Y.x) %>%
     #gets rid of all duplicate rows but keeps all info
-    distinct(Datetime,TAG, Event,  .keep_all = TRUE) %>%
+    distinct(Datetime,TAG, Event, .keep_all = TRUE) %>%
     replace_na(list(Species = "No Info", ReleaseSite = "No Info"))
   
 
-  df_list <- list( "WGFP_Clean" = WGFP_Clean, "All_Detections" = All_detections2, 
+  df_list <- list( "WGFP_Clean" = WGFP_Clean, 
                   "All_Events" = filled_in_release_rows_condensed, "Marker_Tag_data" = Markers_only2, "Recaps_detections" = recaps_detections)
   
   end_time <- Sys.time()

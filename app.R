@@ -45,7 +45,7 @@ Release_05 <- Release %>%
 Recaptures_05 <- Recaptures %>%
   mutate(Date = as.character(mdy(Date)))
 #functions
-source("WGFP_EncounterHistoriesFunction.R")
+source("All_Combined_events_function.R")
 source("Combine_events_stations_function.R")
 source("enc_hist_wide_summary_function.R")
 source("get_movements_function.R")
@@ -861,8 +861,6 @@ server <- function(input, output, session) {
     #then after that i want to render the table with button5 along with filters
     initial_states_data_list <- eventReactive(input$button4,{
       states_data1_list <- Get_states_function(combined_events_stations)
-      
-      
       return(states_data1_list)
         
     })

@@ -195,9 +195,8 @@ releasesites <- sp::spTransform(releasesites, CRS("+init=epsg:4326"))
 mobile_reaches <- readOGR(dsn = layer_location, layer = "mobile_reaches")
 mobile_reaches <- sp::spTransform(mobile_reaches, CRS("+init=epsg:4326"))
 
-#stations_10m <- readOGR(dsn = layer_location, layer = "stations_10m")
-#stations_10m <- sp::spTransform(stations_10m, CRS("+init=epsg:4326"))
-
+stations_10m <- readOGR(dsn = layer_location, layer = "stations_10m")
+stations_10m <- sp::spTransform(stations_10m, CRS("+init=epsg:4326"))
 simple_stations1 <- ms_simplify(stations_10m, keep = .1)
 write_rds(simple_stations1, file = file.path(paste0(layer_location,"/"), paste0("simple_stations.rds")))
 
